@@ -5,10 +5,14 @@
 
 namespace simplesignal_p {
 
+struct Connection;
+
 struct Callback
 {
     void *fun = nullptr;
     void *obj = nullptr;
+
+    Connection *conn = nullptr;
 
     bool operator==(const Callback &other) const {
         return fun == other.fun && obj == other.obj;
@@ -16,9 +20,6 @@ struct Callback
 };
 
 using CallbacksContainer = std::vector<Callback>;
-
-struct Connection;
-using ConnectionsContainer = std::vector<Connection*>;
 
 struct SimpleSignalBase
 {
@@ -91,7 +92,6 @@ class SimpleSignal<RetType(ArgTypes...)> : public SimpleSignalBase
     using CallbackType = std::function<RetType(ArgTypes...)>;
     
     CallbacksContainer callbacks;
-    ConnectionsContainer connections;
 
     bool isDirty = false;
 public:
@@ -101,21 +101,23 @@ public:
     SimpleSignal &operator=(const SimpleSignal &other) = delete;
 
     SimpleSignal(SimpleSignal &&other) noexcept :
-        callbacks(std::move(other.callbacks)), connections(std::move(other.connections)) {}
+        callbacks(std::move(other.callbacks)) {}
     SimpleSignal &operator=(SimpleSignal &&other) noexcept {
         callbacks = std::move(other.callbacks);
-        connections = std::move(other.connections);
         return *this;
     }
 
     ~SimpleSignal() {
-        for (auto &connection : connections)
-            delete connection;
+        for (auto &cb : callbacks)
+            if (cb.conn) {
+                delete cb.conn;
+                cb.conn = nullptr;
+            }
     }
 
     void dirty(int index) override {
         isDirty = true;
-        connections[index]->index = -1;
+        callbacks[index].conn->index = -1;
         callbacks[index].fun = nullptr;
         callbacks[index].obj = nullptr;
     }
@@ -132,8 +134,8 @@ public:
             (reinterpret_cast<ObjType*>(obj)->*fun)(args...);
         });
 
-        connections.emplace_back(new Connection(this, callbacks.size() - 1));
-        return ConnectionView(connections.back());
+        cb.conn = new Connection(this, callbacks.size() - 1);
+        return ConnectionView(cb.conn);
     }
 
     ConnectionView add(RetType(fun)(ArgTypes...)) {
@@ -142,8 +144,8 @@ public:
         cb.obj = nullptr;
         cb.fun = reinterpret_cast<void*>(fun);
 
-        connections.emplace_back(new Connection(this, callbacks.size() - 1));
-        return ConnectionView(connections.back());
+        cb.conn = new Connection(this, callbacks.size() - 1);
+        return ConnectionView(cb.conn);
     }
 
     void add(CallbackType fun) {
@@ -167,19 +169,18 @@ public:
         if (isDirty) {
             isDirty = false;
             int size = 0;
-            for (int i = 0; i < connections.size(); i++) {
-                if (connections[i]->index == -1) {
-                    delete connections[i];
+            for (int i = 0; i < callbacks.size(); i++) {
+                if (callbacks[i].conn->index == -1) {
+                    delete callbacks[i].conn;
+                    callbacks[i].conn = nullptr;
                     continue;
                 }
 
                 callbacks[size] = callbacks[i];
-                connections[size] = connections[i];
-                connections[size]->index = size++;
+                callbacks[size].conn->index = size++;
             }
 
             callbacks.resize(size);
-            connections.resize(size);
         }
     }
 };

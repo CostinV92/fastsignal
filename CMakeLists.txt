@@ -48,3 +48,35 @@ add_custom_target(run_example
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     COMMENT "Running SimpleSignal example..."
 )
+
+# Include GoogleTest
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/eb2d85edd0bff7a712b6aff147cd9f789f0d7d0b.zip
+)
+FetchContent_MakeAvailable(googletest)
+
+enable_testing()
+
+add_executable(
+  simplesignal_test
+  test_simplesignal.cpp
+)
+
+target_link_libraries(
+  simplesignal_test
+  GTest::gtest_main
+  GTest::gmock_main
+)
+
+include(GoogleTest)
+gtest_discover_tests(simplesignal_test)
+
+# Add custom target for running the tests
+add_custom_target(run_tests
+    COMMAND ctest
+    DEPENDS simplesignal_test
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Running SimpleSignal tests..."
+)

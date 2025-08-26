@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "simplesignal.hpp"
+#include "fastsignal.hpp"
 
 void free_function_no_param()
 {
@@ -11,7 +11,7 @@ void free_function_no_param_example()
 {
     std::cout << "Free function without parameters example:\n";
     std::cout << "========================================\n";
-    simplesignal::SimpleSignal<void()> sig;
+    fastsignal::FastSignal<void()> sig;
     auto con1 = sig.add(free_function_no_param);
 
     // Will call free_function_no_param once
@@ -29,7 +29,7 @@ void free_function_with_param_example()
 {
     std::cout << "Free function with parameters example:\n";
     std::cout << "======================================\n";
-    simplesignal::SimpleSignal<void(int)> sig;
+    fastsignal::FastSignal<void(int)> sig;
     auto con1 = sig.add(free_function_with_param);
 
     // Will call free_function_with_param(1)
@@ -60,7 +60,7 @@ void free_function_with_complex_param_example()
 {
     std::cout << "Free function with complex parameters example:\n";
     std::cout << "==============================================\n";
-    simplesignal::SimpleSignal<void(Param)> sig;
+    fastsignal::FastSignal<void(Param)> sig;
     auto con1 = sig.add(free_function_with_complex_param);
 
     Param param{1};
@@ -92,7 +92,7 @@ void member_function_with_complex_param_example()
     std::cout << "Member function with complex parameters example:\n";
     std::cout << "==============================================\n";
     Object object;
-    simplesignal::SimpleSignal<void(Param)> sig;
+    fastsignal::FastSignal<void(Param)> sig;
     sig.add<&Object::member_function_with_complex_param>(&object);
     Param param{1};
     sig(param);
@@ -104,7 +104,7 @@ void virtual_member_function_example()
     std::cout << "Member function of interface example:\n";
     std::cout << "====================================\n";
     Interface *object = new Object();
-    simplesignal::SimpleSignal<void(Param)> sig;
+    fastsignal::FastSignal<void(Param)> sig;
     sig.add<&Interface::virtual_member_function>(object);
     Param param{1};
     sig(param);

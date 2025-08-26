@@ -3,9 +3,9 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h> 
 
-#include "simplesignal.hpp"
+#include "fastsignal.hpp"
 
-using namespace simplesignal;
+using namespace fastsignal;
 
 int global_value1 = 0;
 int global_value2 = 0;
@@ -50,7 +50,7 @@ struct Foo {
     MOCK_METHOD(void, set_param_const, (const GlobalParam& x));
 };
 
-class SimpleSignalTest : public ::testing::Test
+class FastSignalTest : public ::testing::Test
 {
 protected:
     void SetUp() override
@@ -63,9 +63,9 @@ protected:
     }
 };
 
-TEST_F(SimpleSignalTest, test_signal_empty)
+TEST_F(FastSignalTest, test_signal_empty)
 {
-    SimpleSignal<void(int)> sig;
+    FastSignal<void(int)> sig;
     EXPECT_EQ(sig.size(), 0);
 
     sig(1);
@@ -73,9 +73,9 @@ TEST_F(SimpleSignalTest, test_signal_empty)
     EXPECT_EQ(global_value2, 0);
 }
 
-TEST_F(SimpleSignalTest, test_signal_multiple_disconnect)
+TEST_F(FastSignalTest, test_signal_multiple_disconnect)
 {
-    SimpleSignal<void(int)> sig;
+    FastSignal<void(int)> sig;
     auto con1 = sig.add(set_global_value1);
     EXPECT_EQ(sig.size(), 1);
     con1.disconnect();
@@ -88,9 +88,9 @@ TEST_F(SimpleSignalTest, test_signal_multiple_disconnect)
     EXPECT_EQ(sig.size(), 0);
 }
 
-TEST_F(SimpleSignalTest, test_signal_size)
+TEST_F(FastSignalTest, test_signal_size)
 {
-    SimpleSignal<void(int)> sig;
+    FastSignal<void(int)> sig;
 
     int size = 0;
     std::array<ConnectionView, 100> connections;
@@ -105,9 +105,9 @@ TEST_F(SimpleSignalTest, test_signal_size)
     EXPECT_EQ(sig.size(), 0);
 }
 
-TEST_F(SimpleSignalTest, test_signal_call)
+TEST_F(FastSignalTest, test_signal_call)
 {
-    SimpleSignal<void(int)> sig;
+    FastSignal<void(int)> sig;
     sig.add(set_global_value1);
     sig(1);
     EXPECT_EQ(global_value1, 1);
@@ -121,9 +121,9 @@ TEST_F(SimpleSignalTest, test_signal_call)
     EXPECT_EQ(global_value2, 3);
 }
 
-TEST_F(SimpleSignalTest, test_signal_disconnect)
+TEST_F(FastSignalTest, test_signal_disconnect)
 {
-    SimpleSignal<void(int)> sig;
+    FastSignal<void(int)> sig;
     auto con1 = sig.add(set_global_value1);
     auto con2 = sig.add(set_global_value2);
     sig(1);
@@ -141,9 +141,9 @@ TEST_F(SimpleSignalTest, test_signal_disconnect)
     EXPECT_EQ(global_value2, 2);
 }
 
-TEST_F(SimpleSignalTest, test_signal_param)
+TEST_F(FastSignalTest, test_signal_param)
 {
-    SimpleSignal<void(GlobalParam)> sig;
+    FastSignal<void(GlobalParam)> sig;
     auto con1 = sig.add(set_global_param1);
     auto con2 = sig.add(set_global_param2);
     sig(GlobalParam(1));
@@ -169,9 +169,9 @@ TEST_F(SimpleSignalTest, test_signal_param)
     EXPECT_EQ(global_param2.value, 4);
 }
 
-TEST_F(SimpleSignalTest, test_signal_member_function)
+TEST_F(FastSignalTest, test_signal_member_function)
 {
-    SimpleSignal<void(int)> sig;
+    FastSignal<void(int)> sig;
     Foo foo;
     auto con = sig.add<&Foo::set_value>(&foo);
     EXPECT_CALL(foo, set_value(1));
@@ -185,9 +185,9 @@ TEST_F(SimpleSignalTest, test_signal_member_function)
     sig(3);
 }
 
-TEST_F(SimpleSignalTest, test_signal_member_function_param)
+TEST_F(FastSignalTest, test_signal_member_function_param)
 {
-    SimpleSignal<void(GlobalParam)> sig;
+    FastSignal<void(GlobalParam)> sig;
     Foo foo;
     auto con = sig.add<&Foo::set_param>(&foo);
     EXPECT_CALL(foo, set_param(global_param1));
@@ -201,9 +201,9 @@ TEST_F(SimpleSignalTest, test_signal_member_function_param)
     sig(global_param1);
 }
 
-TEST_F(SimpleSignalTest, test_signal_member_function_param_ref)
+TEST_F(FastSignalTest, test_signal_member_function_param_ref)
 {
-    SimpleSignal<void(GlobalParam&)> sig;
+    FastSignal<void(GlobalParam&)> sig;
     Foo foo;
     sig.add<&Foo::set_param_ref>(&foo);
     EXPECT_CALL(foo, set_param_ref(global_param1));
@@ -218,9 +218,9 @@ TEST_F(SimpleSignalTest, test_signal_member_function_param_ref)
     //sig(GlobalParam(2));
 }
 
-TEST_F(SimpleSignalTest, test_signal_member_function_param_const)
+TEST_F(FastSignalTest, test_signal_member_function_param_const)
 {
-    SimpleSignal<void(const GlobalParam&)> sig;
+    FastSignal<void(const GlobalParam&)> sig;
     Foo foo;
 
     // Calling using const parameter (lvalue) because cb accepts const parameter
@@ -234,9 +234,9 @@ TEST_F(SimpleSignalTest, test_signal_member_function_param_const)
     sig(GlobalParam(2));
 }
 
-TEST_F(SimpleSignalTest, test_signal_connection_view_move)
+TEST_F(FastSignalTest, test_signal_connection_view_move)
 {
-    SimpleSignal<void(int)> sig;
+    FastSignal<void(int)> sig;
     auto con1 = sig.add(set_global_value1);
     ConnectionView con2;
 

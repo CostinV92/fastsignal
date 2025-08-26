@@ -3,7 +3,7 @@
 #include <vector>
 #include <functional>
 
-namespace simplesignal {
+namespace fastsignal {
 
 struct Connection;
 
@@ -21,22 +21,22 @@ struct Callback
 
 using CallbacksContainer = std::vector<Callback>;
 
-struct SimpleSignalBase
+struct FastSignalBase
 {
-    virtual ~SimpleSignalBase() = default;
+    virtual ~FastSignalBase() = default;
 
     virtual void dirty(int index) = 0;
 };
 
 template<typename Signature>
-class SimpleSignal;
+class FastSignal;
 
 struct Connection
 {
-    SimpleSignalBase *sig;
+    FastSignalBase *sig;
     int index;
 
-    Connection(SimpleSignalBase *sig, int index) :
+    Connection(FastSignalBase *sig, int index) :
         sig(sig), index(index) {}
 
     Connection(const Connection &other) = delete;
@@ -89,7 +89,7 @@ struct ConnectionView
 };
 
 template<typename RetType, typename... ArgTypes>
-class SimpleSignal<RetType(ArgTypes...)> : public SimpleSignalBase
+class FastSignal<RetType(ArgTypes...)> : public FastSignalBase
 {
     using CallbackType = std::function<RetType(ArgTypes...)>;
     
@@ -99,18 +99,18 @@ class SimpleSignal<RetType(ArgTypes...)> : public SimpleSignalBase
     size_t m_size = 0;
 public:
 
-    SimpleSignal() = default;
-    SimpleSignal(const SimpleSignal &other) = delete;
-    SimpleSignal &operator=(const SimpleSignal &other) = delete;
+    FastSignal() = default;
+    FastSignal(const FastSignal &other) = delete;
+    FastSignal &operator=(const FastSignal &other) = delete;
 
-    SimpleSignal(SimpleSignal &&other) noexcept :
+    FastSignal(FastSignal &&other) noexcept :
         callbacks(std::move(other.callbacks)) {}
-    SimpleSignal &operator=(SimpleSignal &&other) noexcept {
+    FastSignal &operator=(FastSignal &&other) noexcept {
         callbacks = std::move(other.callbacks);
         return *this;
     }
 
-    ~SimpleSignal() {
+    ~FastSignal() {
         for (auto &cb : callbacks)
             if (cb.conn) {
                 delete cb.conn;
@@ -199,4 +199,4 @@ public:
     }
 };
 
-} // namespace simplesignal
+} // namespace fastsignal

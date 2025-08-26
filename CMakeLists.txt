@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(SimpleSignal VERSION 1.0.0 LANGUAGES CXX)
+project(FastSignal VERSION 1.0.0 LANGUAGES CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -20,33 +20,25 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Create header-only library target
-add_library(simplesignal INTERFACE)
-target_include_directories(simplesignal INTERFACE
+add_library(fastsignal INTERFACE)
+target_include_directories(fastsignal INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
 
 # Set properties for the interface library
-set_target_properties(simplesignal PROPERTIES
+set_target_properties(fastsignal PROPERTIES
     VERSION ${PROJECT_VERSION}
     DESCRIPTION "A lightweight, header-only C++ signal/slot library"
 )
 
 # Create example executable
-add_executable(simplesignal_example example.cpp)
-target_link_libraries(simplesignal_example simplesignal)
+add_executable(fastsignal_example fastsignal_example.cpp)
+target_link_libraries(fastsignal_example fastsignal)
 
 # Set properties for the example executable
-set_target_properties(simplesignal_example PROPERTIES
-    OUTPUT_NAME "simplesignal_example"
-)
-
-# Add custom target for running the example
-add_custom_target(run_example
-    COMMAND ${CMAKE_BINARY_DIR}/bin/simplesignal_example
-    DEPENDS simplesignal_example
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    COMMENT "Running SimpleSignal example..."
+set_target_properties(fastsignal_example PROPERTIES
+    OUTPUT_NAME "fastsignal_example"
 )
 
 # Include GoogleTest
@@ -60,23 +52,32 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 add_executable(
-  simplesignal_test
-  test_simplesignal.cpp
+  fastsignal_test
+  fastsignal_test.cpp
 )
 
 target_link_libraries(
-  simplesignal_test
+  fastsignal_test
+  fastsignal
   GTest::gtest_main
   GTest::gmock_main
 )
 
 include(GoogleTest)
-gtest_discover_tests(simplesignal_test)
+gtest_discover_tests(fastsignal_test)
+
+# Add custom target for running the example
+add_custom_target(example
+    COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_example
+    DEPENDS fastsignal_example
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    COMMENT "Running FastSignal example..."
+)
 
 # Add custom target for running the tests
-add_custom_target(run_tests
-    COMMAND ctest
-    DEPENDS simplesignal_test
+add_custom_target(tests
+    COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_test
+    DEPENDS fastsignal_test
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Running SimpleSignal tests..."
+    COMMENT "Running FastSignal tests..."
 )

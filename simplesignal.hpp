@@ -65,7 +65,7 @@ struct ConnectionView
 {
     Connection *connection;
 
-    ConnectionView(Connection *connection) : connection(connection) {}
+    ConnectionView(Connection *connection = nullptr) : connection(connection) {}
 
     ConnectionView(const ConnectionView &other) = delete;
     ConnectionView &operator=(const ConnectionView &other) = delete;

@@ -81,8 +81,10 @@ struct ConnectionView
     }
 
     void disconnect() {
-        connection->disconnect();
-        connection = nullptr;
+        if (connection) {
+            connection->disconnect();
+            connection = nullptr;
+        }
     }
 };
 

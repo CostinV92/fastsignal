@@ -130,7 +130,7 @@ public:
         auto &cb = callbacks.emplace_back();
 
         cb.obj = reinterpret_cast<void*>(obj);
-        cb.fun = reinterpret_cast<void*>(+[](void *obj, ArgTypes... args) -> RetType {
+        cb.fun = reinterpret_cast<void*>(+[](void *obj, const ArgTypes&... args) -> RetType {
             (reinterpret_cast<ObjType*>(obj)->*fun)(args...);
         });
 

@@ -96,6 +96,7 @@ class SimpleSignal<RetType(ArgTypes...)> : public SimpleSignalBase
     CallbacksContainer callbacks;
 
     bool isDirty = false;
+    size_t m_size = 0;
 public:
 
     SimpleSignal() = default;
@@ -119,9 +120,14 @@ public:
 
     void dirty(int index) override {
         isDirty = true;
+        --m_size;
         callbacks[index].conn->index = -1;
         callbacks[index].fun = nullptr;
         callbacks[index].obj = nullptr;
+    }
+
+    size_t size() const {
+        return m_size;
     }
 
     template<auto fun, class ObjType>
@@ -136,6 +142,7 @@ public:
             (reinterpret_cast<ObjType*>(obj)->*fun)(args...);
         });
 
+        ++m_size;
         cb.conn = new Connection(this, callbacks.size() - 1);
         return ConnectionView(cb.conn);
     }
@@ -149,6 +156,7 @@ public:
         cb.obj = nullptr;
         cb.fun = reinterpret_cast<void*>(fun);
 
+        ++m_size;
         cb.conn = new Connection(this, callbacks.size() - 1);
         return ConnectionView(cb.conn);
     }

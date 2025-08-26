@@ -9,10 +9,13 @@ struct Connection;
 
 struct Callback
 {
-    void *fun = nullptr;
     void *obj = nullptr;
+    void *fun = nullptr;
 
     Connection *conn = nullptr;
+
+    Callback(void *obj = nullptr, void *fun = nullptr) :
+        obj(obj), fun(fun) {}
 
     bool operator==(const Callback &other) const {
         return fun == other.fun && obj == other.obj;
@@ -81,10 +84,11 @@ struct ConnectionView
     }
 
     void disconnect() {
-        if (connection) {
-            connection->disconnect();
-            connection = nullptr;
-        }
+        if (!connection)
+            return;
+
+        connection->disconnect();
+        connection = nullptr;
     }
 };
 
@@ -111,11 +115,12 @@ public:
     }
 
     ~FastSignal() {
-        for (auto &cb : callbacks)
-            if (cb.conn) {
-                delete cb.conn;
-                cb.conn = nullptr;
-            }
+        for (auto &cb : callbacks) {
+            if (!cb.conn)
+                continue;
+            delete cb.conn;
+            cb.conn = nullptr;
+        }
     }
 
     void dirty(int index) override {
@@ -135,12 +140,10 @@ public:
         static_assert(std::is_invocable_v<decltype(fun), ObjType*, ArgTypes...>,
             "Callback must be invocable with the signal's declared parameters");
 
-        auto &cb = callbacks.emplace_back();
-
-        cb.obj = reinterpret_cast<void*>(obj);
-        cb.fun = reinterpret_cast<void*>(+[](void *obj, const ArgTypes&... args) -> RetType {
-            (reinterpret_cast<ObjType*>(obj)->*fun)(args...);
-        });
+        auto &cb = callbacks.emplace_back(reinterpret_cast<void*>(obj),
+            reinterpret_cast<void*>(+[](void *obj, const ArgTypes&... args) -> RetType {
+                (reinterpret_cast<ObjType*>(obj)->*fun)(args...);
+            }));
 
         ++m_size;
         cb.conn = new Connection(this, callbacks.size() - 1);
@@ -151,10 +154,7 @@ public:
         static_assert(std::is_invocable_v<decltype(fun), ArgTypes...>,
             "Callback must be invocable with the signal's declared parameters");
 
-        auto &cb = callbacks.emplace_back();
-
-        cb.obj = nullptr;
-        cb.fun = reinterpret_cast<void*>(fun);
+        auto &cb = callbacks.emplace_back(nullptr, reinterpret_cast<void*>(fun));
 
         ++m_size;
         cb.conn = new Connection(this, callbacks.size() - 1);
@@ -179,23 +179,24 @@ public:
                 reinterpret_cast<RetType(*)(ArgTypes...)>(cb.fun)(std::forward<ActualArgs>(args)...);
         }
 
-        if (isDirty) {
-            isDirty = false;
-            size_t size = 0;
-            for (size_t i = 0; i < callbacks.size(); i++) {
-                if (callbacks[i].conn->index == -1) {
-                    delete callbacks[i].conn;
-                    callbacks[i].conn = nullptr;
-                    continue;
-                }
+        if (!isDirty)
+            return;
 
+        size_t size = 0;
+        for (size_t i = 0; i < callbacks.size(); i++) {
+            if (callbacks[i].conn->index == -1) {
+                delete callbacks[i].conn;
+                callbacks[i].conn = nullptr;
+                continue;
+            } else {
                 callbacks[size] = callbacks[i];
                 callbacks[size].conn->index = size;
                 size++;
             }
-
-            callbacks.resize(size);
         }
+
+        isDirty = false;
+        callbacks.resize(size);
     }
 };
 

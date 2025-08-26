@@ -75,7 +75,7 @@ add_custom_target(example
 )
 
 # Add custom target for running the tests
-add_custom_target(tests
+add_custom_target(run_tests
     COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_test
     DEPENDS fastsignal_test
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}

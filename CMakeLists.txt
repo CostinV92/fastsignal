@@ -57,8 +57,6 @@ set_target_properties(fastsignal_example PROPERTIES
     OUTPUT_NAME "fastsignal_example"
 )
 
-enable_testing()
-
 add_executable(
   fastsignal_test
   fastsignal_test.cpp
@@ -70,9 +68,6 @@ target_link_libraries(
   GTest::gtest_main
   GTest::gmock_main
 )
-
-include(GoogleTest)
-gtest_discover_tests(fastsignal_test)
 
 add_executable(fastsignal_benchmark fastsignal_benchmark.cpp)
 target_link_libraries(fastsignal_benchmark PRIVATE nanobench)
@@ -87,14 +82,14 @@ add_custom_target(example
 )
 
 # Add custom target for running the tests
-add_custom_target(run_tests
+add_custom_target(test
     COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_test
     DEPENDS fastsignal_test
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running FastSignal tests..."
 )
 
-add_custom_target(run_benchmark
+add_custom_target(bench
     COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_benchmark
     DEPENDS fastsignal_benchmark
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}

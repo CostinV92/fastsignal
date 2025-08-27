@@ -76,7 +76,7 @@ gtest_discover_tests(fastsignal_test)
 
 add_executable(fastsignal_benchmark fastsignal_benchmark.cpp)
 target_link_libraries(fastsignal_benchmark PRIVATE nanobench)
-target_compile_options(fastsignal_benchmark PRIVATE -O3)
+target_compile_options(fastsignal_benchmark PRIVATE -O3 -DNDEBUG)
 
 # Add custom target for running the example
 add_custom_target(example

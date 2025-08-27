@@ -136,7 +136,7 @@ struct SubjectWithComplexParam
     }
 };
 
-constexpr int ITERATIONS = 100;
+constexpr int ITERATIONS = 1000;
 constexpr int DIST_COUNT = 100;
 constexpr int OBSERVERS_COUNT = 500;
 std::vector<std::unique_ptr<ObserverI>> observers;

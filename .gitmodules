@@ -1,0 +1,3 @@
+[submodule "fteng_signals"]
+	path = fteng_signals
+	url = https://github.com/TheWisp/signals

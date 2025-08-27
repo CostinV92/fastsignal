@@ -255,3 +255,31 @@ TEST_F(FastSignalTest, test_signal_connection_view_move)
     sig(6);
     EXPECT_EQ(global_value1, 5);
 }
+
+TEST_F(FastSignalTest, test_signal_move)
+{
+    FastSignal<void(int)> sig1;
+    sig1.add(set_global_value1);
+    FastSignal<void(int)> sig2(std::move(sig1));
+
+    EXPECT_EQ(sig1.size(), 0);
+    EXPECT_EQ(sig2.size(), 1);
+
+    // This should not fail, but no callback should be called
+    sig1(1);
+    EXPECT_EQ(global_value1, 0);
+
+    sig2(2);
+    EXPECT_EQ(global_value1, 2);
+
+    FastSignal<void(int)> sig3;
+    sig3(3);
+    EXPECT_EQ(global_value1, 2);
+
+    sig3 = std::move(sig2);
+    EXPECT_EQ(sig2.size(), 0);
+    EXPECT_EQ(sig3.size(), 1);
+
+    sig3(4);
+    EXPECT_EQ(global_value1, 4);
+}

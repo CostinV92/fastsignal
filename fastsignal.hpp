@@ -108,9 +108,14 @@ public:
     FastSignal &operator=(const FastSignal &other) = delete;
 
     FastSignal(FastSignal &&other) noexcept :
-        callbacks(std::move(other.callbacks)) {}
+        callbacks(std::move(other.callbacks)), m_size(other.m_size) {
+        other.m_size = 0;
+    }
+
     FastSignal &operator=(FastSignal &&other) noexcept {
         callbacks = std::move(other.callbacks);
+        m_size = other.m_size;
+        other.m_size = 0;
         return *this;
     }
 

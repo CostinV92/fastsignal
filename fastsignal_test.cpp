@@ -238,6 +238,8 @@ TEST_F(FastSignalTest, test_signal_connection_view_move)
 {
     FastSignal<void(int)> sig;
     auto con1 = sig.add(set_global_value1);
+    EXPECT_EQ(sig.size(), 1);
+
     ConnectionView con2;
 
     // This should not compile
@@ -246,6 +248,7 @@ TEST_F(FastSignalTest, test_signal_connection_view_move)
 
     con2 = std::move(con1);
     EXPECT_EQ(con1.connection, nullptr);
+    EXPECT_EQ(sig.size(), 1);
 
     con1.disconnect();
     sig(5);
@@ -254,6 +257,7 @@ TEST_F(FastSignalTest, test_signal_connection_view_move)
     con2.disconnect();
     sig(6);
     EXPECT_EQ(global_value1, 5);
+    EXPECT_EQ(sig.size(), 0);
 }
 
 TEST_F(FastSignalTest, test_signal_move)

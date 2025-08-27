@@ -16,7 +16,7 @@ void set_global_value1()
 
 struct ComplexParam
 {
-    int value;
+    volatile int value;
     std::string str;
     std::vector<int> vec(std::make_index_sequence<1000>());
 
@@ -48,7 +48,7 @@ struct Observer : public ObserverI
 
     void set_global_value3(ComplexParam param) override
     {
-        (void)param;
+        param.value++;
     }
 };
 
@@ -74,7 +74,7 @@ struct SubjectWithoutParam
         sig();
     }
 
-    void notify_sig_m()
+    void notify_fteng_sig()
     {
         fteng_sig();
     }
@@ -102,7 +102,7 @@ struct SubjectWithParam
         sig(value);
     }
 
-    void notify_sig_m(int value)
+    void notify_fteng_sig(int value)
     {
         fteng_sig(value);
     }
@@ -130,7 +130,7 @@ struct SubjectWithComplexParam
         sig(param);
     }
 
-    void notify_sig_m(ComplexParam& param)
+    void notify_fteng_sig(ComplexParam& param)
     {
         fteng_sig(param);
     }
@@ -160,7 +160,7 @@ struct SubjectWithComplexParamWithoutInterface
         sig(param);
     }
 
-    void notify_sig_m(ComplexParam& param)
+    void notify_fteng_sig(ComplexParam& param)
     {
         fteng_sig(param);
     }
@@ -252,7 +252,7 @@ void benchmark_notify_observers_without_param(SubjectWithoutParam& subject)
     });
 
     b.run("fteng_sig", [&]() {
-        subject.notify_sig_m();
+        subject.notify_fteng_sig();
     });
 }
 
@@ -270,7 +270,7 @@ void benchmark_notify_observers_param(SubjectWithParam& subject)
     });
 
     b.run("fteng_sig", [&]() {
-        subject.notify_sig_m(1);
+        subject.notify_fteng_sig(1);
     });
 }
 
@@ -288,7 +288,7 @@ void benchmark_notify_observers_complex_param(SubjectWithComplexParam& subject)
     });
 
     b.run("fteng_sig", [&]() {
-        subject.notify_sig_m(complex_param);
+        subject.notify_fteng_sig(complex_param);
     });
 }
 
@@ -306,7 +306,7 @@ void benchmark_notify_observers_complex_param_without_interface(SubjectWithCompl
     });
 
     b.run("fteng_sig", [&]() {
-        subject.notify_sig_m(complex_param);
+        subject.notify_fteng_sig(complex_param);
     });
 }
 

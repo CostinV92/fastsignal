@@ -29,7 +29,7 @@ struct ObserverI
 {
     virtual void set_global_value1() = 0;
     virtual void set_global_value2(int value) = 0;
-    virtual void set_global_value3(ComplexParam& param) = 0;
+    virtual void set_global_value3(ComplexParam param) = 0;
     virtual ~ObserverI() = default;
 };
 
@@ -46,7 +46,7 @@ struct Observer : public ObserverI
         sink += value;
     }
 
-    void set_global_value3(ComplexParam& param) override
+    void set_global_value3(ComplexParam param) override
     {
         (void)param;
     }
@@ -110,11 +110,41 @@ struct SubjectWithParam
 
 struct SubjectWithComplexParam
 {
-    FastSignal<void(ComplexParam&)> sig;
-    signal<void(ComplexParam&)> fteng_sig;
+    FastSignal<void(ComplexParam)> sig;
+    signal<void(ComplexParam)> fteng_sig;
     std::vector<ObserverI *> observers;
 
     void add_observer(ObserverI *observer)
+    {
+        observers.push_back(observer);
+    }
+
+    void notify_observers(ComplexParam& param)
+    {
+        for (auto observer : observers)
+            observer->set_global_value3(param);
+    }
+
+    void notify_sig(ComplexParam& param)
+    {
+        sig(param);
+    }
+
+    void notify_sig_m(ComplexParam& param)
+    {
+        fteng_sig(param);
+    }
+};
+
+using StaticObserver = Observer<10>;
+
+struct SubjectWithComplexParamWithoutInterface
+{
+    FastSignal<void(ComplexParam)> sig;
+    signal<void(ComplexParam)> fteng_sig;
+    std::vector<StaticObserver *> observers;
+
+    void add_observer(StaticObserver *observer)
     {
         observers.push_back(observer);
     }
@@ -140,6 +170,7 @@ constexpr int ITERATIONS = 1000;
 constexpr int DIST_COUNT = 100;
 constexpr int OBSERVERS_COUNT = 500;
 std::vector<std::unique_ptr<ObserverI>> observers;
+std::vector<std::unique_ptr<StaticObserver>> observers_without_interface;
 
 template<size_t I>
 std::function<std::unique_ptr<ObserverI>(void)> get_observer()
@@ -168,10 +199,14 @@ void create_observers()
 
     for (int i = 0; i < OBSERVERS_COUNT; ++i) {
         observers.emplace_back(fac[dis(gen)]());
+        observers_without_interface.emplace_back(std::make_unique<StaticObserver>());
     }
 }
 
-void benchmark_add_observer(SubjectWithoutParam& subject, SubjectWithParam& subject_with_param, SubjectWithComplexParam& subject_with_complex_param)
+void benchmark_add_observer(SubjectWithoutParam& subject,
+    SubjectWithParam& subject_with_param,
+    SubjectWithComplexParam& subject_with_complex_param,
+    SubjectWithComplexParamWithoutInterface& subject_with_complex_param_without_interface)
 {
     ankerl::nanobench::Bench b;
     b.title("benchmark_add_observer").relative(true).performanceCounters(true);
@@ -180,6 +215,7 @@ void benchmark_add_observer(SubjectWithoutParam& subject, SubjectWithParam& subj
             subject.add_observer(observers[i].get());
             subject_with_param.add_observer(observers[i].get());
             subject_with_complex_param.add_observer(observers[i].get());
+            subject_with_complex_param_without_interface.add_observer(observers_without_interface[i].get());
         }
     });
 
@@ -188,6 +224,7 @@ void benchmark_add_observer(SubjectWithoutParam& subject, SubjectWithParam& subj
             subject.sig.add<&ObserverI::set_global_value1>(observers[i].get());
             subject_with_param.sig.add<&ObserverI::set_global_value2>(observers[i].get());
             subject_with_complex_param.sig.add<&ObserverI::set_global_value3>(observers[i].get());
+            subject_with_complex_param_without_interface.sig.add<&StaticObserver::set_global_value3>(observers_without_interface[i].get());
         }
     });
 
@@ -196,6 +233,7 @@ void benchmark_add_observer(SubjectWithoutParam& subject, SubjectWithParam& subj
             subject.fteng_sig.connect<&ObserverI::set_global_value1>(observers[i].get());
             subject_with_param.fteng_sig.connect<&ObserverI::set_global_value2>(observers[i].get());
             subject_with_complex_param.fteng_sig.connect<&ObserverI::set_global_value3>(observers[i].get());
+            subject_with_complex_param_without_interface.fteng_sig.connect<&StaticObserver::set_global_value3>(observers_without_interface[i].get());
         }
     });
 }
@@ -254,18 +292,38 @@ void benchmark_notify_observers_complex_param(SubjectWithComplexParam& subject)
     });
 }
 
+void benchmark_notify_observers_complex_param_without_interface(SubjectWithComplexParamWithoutInterface& subject)
+{
+    ankerl::nanobench::Bench b;
+    b.title("benchmark_notify_observers_complex_param_without_interface").relative(true).performanceCounters(true);
+    b.minEpochIterations(ITERATIONS);
+    b.run("observer", [&]() {
+        subject.notify_observers(complex_param);
+    });
+
+    b.run("fastsignal", [&]() {
+        subject.notify_sig(complex_param);
+    });
+
+    b.run("fteng_sig", [&]() {
+        subject.notify_sig_m(complex_param);
+    });
+}
+
 int main()
 {
     SubjectWithoutParam subject;
     SubjectWithParam subject_with_param;
     SubjectWithComplexParam subject_with_complex_param;
+    SubjectWithComplexParamWithoutInterface subject_with_complex_param_without_interface;
 
     create_observers();
 
-    benchmark_add_observer(subject, subject_with_param, subject_with_complex_param);
+    benchmark_add_observer(subject, subject_with_param, subject_with_complex_param, subject_with_complex_param_without_interface);
     benchmark_notify_observers_without_param(subject);
     benchmark_notify_observers_param(subject_with_param);
     benchmark_notify_observers_complex_param(subject_with_complex_param);
+    benchmark_notify_observers_complex_param_without_interface(subject_with_complex_param_without_interface);
 
     return 0;
 }

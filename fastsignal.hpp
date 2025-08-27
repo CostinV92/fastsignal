@@ -93,7 +93,7 @@ struct ConnectionView
 };
 
 template<typename RetType, typename... ArgTypes>
-class FastSignal<RetType(ArgTypes...)> : public FastSignalBase
+class FastSignal<RetType(ArgTypes...)> final : public FastSignalBase
 {
     using CallbackType = std::function<RetType(ArgTypes...)>;
     

@@ -201,6 +201,9 @@ void create_observers()
         observers.emplace_back(fac[dis(gen)]());
         observers_without_interface.emplace_back(std::make_unique<StaticObserver>());
     }
+
+    std::shuffle(observers.begin(), observers.end(), gen);
+    std::shuffle(observers_without_interface.begin(), observers_without_interface.end(), gen);
 }
 
 void benchmark_add_observer(SubjectWithoutParam& subject,

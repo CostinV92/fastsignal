@@ -5,14 +5,17 @@
 
 namespace fastsignal {
 
+struct Callback;
 struct Connection;
+struct ConnectionView;
+struct FastSignalBase;
+template<typename Signature>
+class FastSignal;
 
 struct Callback
 {
     void *obj = nullptr;
     void *fun = nullptr;
-
-    Connection *conn = nullptr;
 
     Callback(void *obj = nullptr, void *fun = nullptr) :
         obj(obj), fun(fun) {}
@@ -23,16 +26,6 @@ struct Callback
 };
 
 using CallbacksContainer = std::vector<Callback>;
-
-struct FastSignalBase
-{
-    virtual ~FastSignalBase() = default;
-
-    virtual void dirty(int index) = 0;
-};
-
-template<typename Signature>
-class FastSignal;
 
 struct Connection
 {
@@ -59,9 +52,7 @@ struct Connection
         return *this;
     }
 
-    void disconnect() {
-        sig->dirty(index);
-    }
+    inline void disconnect();
 };
 
 struct ConnectionView
@@ -92,78 +83,83 @@ struct ConnectionView
     }
 };
 
-template<typename RetType, typename... ArgTypes>
-class FastSignal<RetType(ArgTypes...)> final : public FastSignalBase
+struct FastSignalBase
 {
-    using CallbackType = std::function<RetType(ArgTypes...)>;
+    CallbacksContainer m_callbacks;
+    std::vector<Connection*> m_connections;
     
-    CallbacksContainer callbacks;
-
-    bool isDirty = false;
     size_t m_size = 0;
-public:
+    bool m_dirty = false;
 
-    FastSignal() = default;
-    FastSignal(const FastSignal &other) = delete;
-    FastSignal &operator=(const FastSignal &other) = delete;
+    FastSignalBase() = default;
+    FastSignalBase(const FastSignalBase &other) = delete;
+    FastSignalBase &operator=(const FastSignalBase &other) = delete;
 
-    FastSignal(FastSignal &&other) noexcept :
-        callbacks(std::move(other.callbacks)), m_size(other.m_size) {
+    FastSignalBase(FastSignalBase &&other) noexcept :
+        m_callbacks(std::move(other.m_callbacks)), m_size(other.m_size) {
         other.m_size = 0;
     }
 
-    FastSignal &operator=(FastSignal &&other) noexcept {
-        callbacks = std::move(other.callbacks);
+    FastSignalBase &operator=(FastSignalBase &&other) noexcept {
+        m_callbacks = std::move(other.m_callbacks);
         m_size = other.m_size;
         other.m_size = 0;
         return *this;
     }
 
-    ~FastSignal() {
-        for (auto &cb : callbacks) {
-            if (!cb.conn)
+    virtual ~FastSignalBase() {
+        for (auto &conn : m_connections) {
+            if (!conn)
                 continue;
-            delete cb.conn;
-            cb.conn = nullptr;
+            delete conn;
+            conn = nullptr;
         }
     }
 
-    void dirty(int index) override {
-        isDirty = true;
+    void dirty(int index) {
+        m_dirty = true;
         --m_size;
-        callbacks[index].conn->index = -1;
-        callbacks[index].fun = nullptr;
-        callbacks[index].obj = nullptr;
+        m_connections[index]->index = -1;
+        m_callbacks[index].fun = nullptr;
+        m_callbacks[index].obj = nullptr;
     }
 
     size_t size() const {
         return m_size;
     }
+};
+
+template<typename RetType, typename... ArgTypes>
+class FastSignal<RetType(ArgTypes...)> final : public FastSignalBase
+{
+    using CallbackType = std::function<RetType(ArgTypes...)>;
+
+public:
 
     template<auto fun, class ObjType>
     ConnectionView add(ObjType *obj) {
         static_assert(std::is_invocable_v<decltype(fun), ObjType*, ArgTypes...>,
             "Callback must be invocable with the signal's declared parameters");
 
-        auto &cb = callbacks.emplace_back(reinterpret_cast<void*>(obj),
+        m_callbacks.emplace_back(reinterpret_cast<void*>(obj),
             reinterpret_cast<void*>(+[](void *obj, const ArgTypes&... args) -> RetType {
                 (reinterpret_cast<ObjType*>(obj)->*fun)(args...);
             }));
 
         ++m_size;
-        cb.conn = new Connection(this, callbacks.size() - 1);
-        return ConnectionView(cb.conn);
+        m_connections.emplace_back(new Connection(this, m_callbacks.size() - 1));
+        return ConnectionView(m_connections.back());
     }
 
     ConnectionView add(RetType(fun)(ArgTypes...)) {
         static_assert(std::is_invocable_v<decltype(fun), ArgTypes...>,
             "Callback must be invocable with the signal's declared parameters");
 
-        auto &cb = callbacks.emplace_back(nullptr, reinterpret_cast<void*>(fun));
+        m_callbacks.emplace_back(nullptr, reinterpret_cast<void*>(fun));
 
         ++m_size;
-        cb.conn = new Connection(this, callbacks.size() - 1);
-        return ConnectionView(cb.conn);
+        m_connections.emplace_back(new Connection(this, m_callbacks.size() - 1));
+        return ConnectionView(m_connections.back());
     }
 
     // TODO(victor);
@@ -174,7 +170,7 @@ public:
     template<typename... ActualArgs>
     void operator()(ActualArgs&&... args) {
         // TODO(victor) - check if the parameters match the signature of the callback
-        for (auto &cb : callbacks) {
+        for (auto &cb : m_callbacks) {
             if (cb.fun == nullptr)
                 continue;
 
@@ -184,25 +180,30 @@ public:
                 reinterpret_cast<RetType(*)(ArgTypes...)>(cb.fun)(std::forward<ActualArgs>(args)...);
         }
 
-        if (!isDirty)
+        if (!m_dirty)
             return;
 
         size_t size = 0;
-        for (size_t i = 0; i < callbacks.size(); i++) {
-            if (callbacks[i].conn->index == -1) {
-                delete callbacks[i].conn;
-                callbacks[i].conn = nullptr;
-                continue;
+        for (size_t i = 0; i < m_callbacks.size(); i++) {
+            if (m_connections[i]->index == -1) {
+                delete m_connections[i];
+                m_connections[i] = nullptr;
             } else {
-                callbacks[size] = callbacks[i];
-                callbacks[size].conn->index = size;
+                m_callbacks[size] = m_callbacks[i];
+                m_connections[size] = m_connections[i];
+                m_connections[size]->index = size;
                 size++;
             }
         }
 
-        isDirty = false;
-        callbacks.resize(size);
+        m_dirty = false;
+        m_callbacks.resize(size);
+        m_connections.resize(size);
     }
 };
+
+inline void Connection::disconnect() {
+    sig->dirty(index);
+}
 
 } // namespace fastsignal

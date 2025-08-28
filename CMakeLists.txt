@@ -26,14 +26,24 @@ FetchContent_Declare(
   googletest
   URL https://github.com/google/googletest/archive/eb2d85edd0bff7a712b6aff147cd9f789f0d7d0b.zip
 )
-FetchContent_MakeAvailable(googletest)
+
+FetchContent_Declare(
+    googlebenchmark
+    GIT_REPOSITORY https://github.com/google/benchmark.git
+    GIT_TAG main
+)
 
 FetchContent_Declare(
     nanobench
     GIT_REPOSITORY https://github.com/martinus/nanobench.git
     GIT_TAG v4.1.0
     GIT_SHALLOW TRUE)
-FetchContent_MakeAvailable(nanobench)
+
+FetchContent_MakeAvailable(
+    googletest
+    googlebenchmark
+    nanobench
+)
 
 # Create header-only library target
 add_library(fastsignal INTERFACE)
@@ -73,6 +83,11 @@ add_executable(fastsignal_benchmark fastsignal_benchmark.cpp)
 target_link_libraries(fastsignal_benchmark PRIVATE nanobench)
 target_compile_options(fastsignal_benchmark PRIVATE -O3 -DNDEBUG)
 
+add_executable(fastsignal_bench_g fastsignal_bench_g.cpp)
+target_link_libraries(fastsignal_bench_g PRIVATE benchmark::benchmark benchmark_main)
+target_compile_options(fastsignal_bench_g PRIVATE -O3 -DNDEBUG)
+
+
 # Add custom target for running the example
 add_custom_target(example
     COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_example
@@ -94,4 +109,11 @@ add_custom_target(bench
     DEPENDS fastsignal_benchmark
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running FastSignal benchmark..."
+)
+
+add_custom_target(bench_g
+    COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_bench_g
+    DEPENDS fastsignal_bench_g
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Running FastSignal Google benchmark..."
 )

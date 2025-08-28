@@ -1,6 +1,7 @@
 #include <nanobench.h>
 #include <memory>
 #include <random>
+#include <algorithm>
 
 #include "fastsignal.hpp"
 #include "fteng_signals/signals.hpp"

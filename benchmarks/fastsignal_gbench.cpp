@@ -106,9 +106,8 @@ struct Observer : public ObserverI
     }
 };
 
-constexpr int ITERATIONS = 10;
 constexpr int DIST_COUNT = 100;
-constexpr int OBSERVERS_COUNT = 1000;
+constexpr int OBSERVERS_COUNT = 500;
 std::vector<std::unique_ptr<ObserverI>> observers;
 Subject subject;
 

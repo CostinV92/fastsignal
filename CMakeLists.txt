@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(FastSignal VERSION 1.0.0 LANGUAGES CXX)
 
+# Avoid CMake warning about CMP0135
+cmake_policy(SET CMP0135 NEW)
+
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,32 +22,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# Include dependencies
-include(FetchContent)
-
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/eb2d85edd0bff7a712b6aff147cd9f789f0d7d0b.zip
-)
-
-FetchContent_Declare(
-    googlebenchmark
-    GIT_REPOSITORY https://github.com/google/benchmark.git
-    GIT_TAG main
-)
-
-FetchContent_Declare(
-    nanobench
-    GIT_REPOSITORY https://github.com/martinus/nanobench.git
-    GIT_TAG v4.1.0
-    GIT_SHALLOW TRUE)
-
-FetchContent_MakeAvailable(
-    googletest
-    googlebenchmark
-    nanobench
-)
-
 # Create header-only library target
 add_library(fastsignal INTERFACE)
 target_include_directories(fastsignal INTERFACE
@@ -58,62 +35,6 @@ set_target_properties(fastsignal PROPERTIES
     DESCRIPTION "A lightweight, header-only C++ signal/slot library"
 )
 
-# Create example executable
-add_executable(fastsignal_example fastsignal_example.cpp)
-target_link_libraries(fastsignal_example fastsignal)
-
-# Set properties for the example executable
-set_target_properties(fastsignal_example PROPERTIES
-    OUTPUT_NAME "fastsignal_example"
-)
-
-add_executable(
-  fastsignal_test
-  fastsignal_test.cpp
-)
-
-target_link_libraries(
-  fastsignal_test
-  fastsignal
-  GTest::gtest_main
-  GTest::gmock_main
-)
-
-add_executable(fastsignal_benchmark fastsignal_benchmark.cpp)
-target_link_libraries(fastsignal_benchmark PRIVATE nanobench)
-target_compile_options(fastsignal_benchmark PRIVATE -O3 -DNDEBUG)
-
-add_executable(fastsignal_bench_g fastsignal_bench_g.cpp)
-target_link_libraries(fastsignal_bench_g PRIVATE benchmark::benchmark benchmark_main)
-target_compile_options(fastsignal_bench_g PRIVATE -O3 -DNDEBUG)
-
-
-# Add custom target for running the example
-add_custom_target(example
-    COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_example
-    DEPENDS fastsignal_example
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    COMMENT "Running FastSignal example..."
-)
-
-# Add custom target for running the tests
-add_custom_target(test
-    COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_test
-    DEPENDS fastsignal_test
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Running FastSignal tests..."
-)
-
-add_custom_target(bench
-    COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_benchmark
-    DEPENDS fastsignal_benchmark
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Running FastSignal benchmark..."
-)
-
-add_custom_target(bench_g
-    COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_bench_g
-    DEPENDS fastsignal_bench_g
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    COMMENT "Running FastSignal Google benchmark..."
-)
+add_subdirectory(examples)
+add_subdirectory(tests)
+add_subdirectory(benchmarks)

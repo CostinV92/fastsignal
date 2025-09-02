@@ -22,15 +22,20 @@ class CBench {
     std::map<int, Run> runs;
 
     void print() {
-        auto first_run_duration = runs.begin()->second.time;
 
+        std::cout << name << "\n";
+        for ([[maybe_unused]] auto _ : name)
+            std::cout << "-";
+        std::cout << "\n";
+
+        auto first_run_duration = runs.begin()->second.time;
         for (auto& run : runs) {
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(run.second.time).count();
             auto relative_duration = duration * 100.0 / std::chrono::duration_cast<std::chrono::nanoseconds>(first_run_duration).count();
-            std::cout << name << " - " << run.second.name << ": " << duration << " ns (" << relative_duration << "%)\n";
+            std::cout << run.second.name << ": " << duration << " ns (" << relative_duration << "%)\n";
         }
 
-        std::cout << "============================\n";
+        std::cout << "============================\n\n";
     }
 
 public:

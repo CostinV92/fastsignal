@@ -1,63 +1,12 @@
+#include <sbench.hpp>
 #include <memory>
 #include <random>
 #include <algorithm>
-#include <chrono>
-#include <iostream>
-#include <map>
 
 #include "fastsignal.hpp"
 #include "fteng_signals/signals.hpp"
 
 using namespace fastsignal;
-
-class CBench {
-    uint32_t id = 0;
-    uint32_t iterations = 1;
-    std::string name;
-
-    struct Run {
-        std::string name;
-        std::chrono::duration<double> time;
-    };
-    std::map<int, Run> runs;
-
-    void print() {
-
-        std::cout << name << "\n";
-        for ([[maybe_unused]] auto _ : name)
-            std::cout << "-";
-        std::cout << "\n";
-
-        auto first_run_duration = runs.begin()->second.time;
-        for (auto& run : runs) {
-            auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(run.second.time).count();
-            auto relative_duration = duration * 100.0 / std::chrono::duration_cast<std::chrono::nanoseconds>(first_run_duration).count();
-            std::cout << run.second.name << ": " << duration << " ns (" << relative_duration << "%)\n";
-        }
-
-        std::cout << "============================\n\n";
-    }
-
-public:
-    CBench(std::string name) : name(name) {}
-
-    void run(std::string test_name, std::function<void()> func) { 
-        auto start_time = std::chrono::high_resolution_clock::now();
-        for (uint32_t i = 0; i < iterations; ++i)
-            func();
-        auto end_time = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> diff = end_time - start_time;
-
-        runs[id++] = {test_name, diff};
-    }
-
-    CBench& iteration(uint32_t iterations) {
-        this->iterations = iterations;
-        return *this;
-    }
-
-    ~CBench() { print(); }
-};
 
 struct ComplexParam
 {
@@ -200,7 +149,7 @@ void create_observers(Subject& subject)
 
 void bench_call(Subject& subject)
 {
-    CBench bench("bench_call");
+    sbench::SBench bench("bench_call");
     bench.iteration(ITERATIONS);
 
     bench.run("observer", [&]() {
@@ -219,7 +168,7 @@ void bench_call(Subject& subject)
 
 void bench_no_param(Subject& subject)
 {
-    CBench bench("bench_no_param");
+    sbench::SBench bench("bench_no_param");
     bench.iteration(ITERATIONS);
 
     bench.run("observer", [&]() {
@@ -237,7 +186,7 @@ void bench_no_param(Subject& subject)
 
 void bench_param(Subject& subject)
 {
-    CBench bench("bench_param");
+    sbench::SBench bench("bench_param");
     bench.iteration(ITERATIONS);
 
     bench.run("observer", [&]() {
@@ -255,7 +204,7 @@ void bench_param(Subject& subject)
 
 void bench_complex_param(Subject& subject)
 {
-    CBench bench("bench_complex_param");
+    sbench::SBench bench("bench_complex_param");
     bench.iteration(ITERATIONS);
 
     bench.run("observer", [&]() {

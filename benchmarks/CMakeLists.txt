@@ -1,6 +1,12 @@
 include(FetchContent)
 
 FetchContent_Declare(
+    sbench
+    GIT_REPOSITORY https://github.com/CostinV92/SBench
+    GIT_TAG main
+)
+
+FetchContent_Declare(
     googlebenchmark
     GIT_REPOSITORY https://github.com/google/benchmark.git
     GIT_TAG main
@@ -13,6 +19,7 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE)
 
 FetchContent_MakeAvailable(
+    sbench
     googlebenchmark
     nanobench
 )
@@ -26,7 +33,7 @@ target_link_libraries(fastsignal_gbench PRIVATE benchmark::benchmark benchmark_m
 target_compile_options(fastsignal_gbench PRIVATE -O3 -DNDEBUG)
 
 add_executable(fastsignal_cbench fastsignal_cbench.cpp)
-target_link_libraries(fastsignal_cbench PRIVATE fastsignal)
+target_link_libraries(fastsignal_cbench PRIVATE sbench fastsignal)
 target_compile_options(fastsignal_cbench PRIVATE -O3 -DNDEBUG)
 
 # Add custom targets for running the benchmarks

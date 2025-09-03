@@ -4,7 +4,7 @@
 #include <algorithm>
 
 #include "fastsignal.hpp"
-#include "fteng_signals/signals.hpp"
+#include <signals.hpp>
 
 using namespace fastsignal;
 

@@ -4,36 +4,47 @@ FetchContent_Declare(
     sbench
     GIT_REPOSITORY https://github.com/CostinV92/SBench
     GIT_TAG main
+    GIT_SHALLOW TRUE
 )
 
 FetchContent_Declare(
     googlebenchmark
     GIT_REPOSITORY https://github.com/google/benchmark.git
     GIT_TAG main
+    GIT_SHALLOW TRUE
 )
 
 FetchContent_Declare(
     nanobench
     GIT_REPOSITORY https://github.com/martinus/nanobench.git
     GIT_TAG v4.1.0
-    GIT_SHALLOW TRUE)
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_Declare(
+    fteng-signals
+    GIT_REPOSITORY https://github.com/CostinV92/fteng-signals
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+)
 
 FetchContent_MakeAvailable(
     sbench
     googlebenchmark
     nanobench
+    fteng-signals
 )
 
 add_executable(fastsignal_nbench fastsignal_nbench.cpp)
-target_link_libraries(fastsignal_nbench PRIVATE nanobench fastsignal)
+target_link_libraries(fastsignal_nbench PRIVATE nanobench fastsignal fteng-signals)
 target_compile_options(fastsignal_nbench PRIVATE -O3 -DNDEBUG)
 
 add_executable(fastsignal_gbench fastsignal_gbench.cpp)
-target_link_libraries(fastsignal_gbench PRIVATE benchmark::benchmark benchmark_main fastsignal)
+target_link_libraries(fastsignal_gbench PRIVATE benchmark::benchmark benchmark_main fastsignal fteng-signals)
 target_compile_options(fastsignal_gbench PRIVATE -O3 -DNDEBUG)
 
 add_executable(fastsignal_cbench fastsignal_cbench.cpp)
-target_link_libraries(fastsignal_cbench PRIVATE sbench fastsignal)
+target_link_libraries(fastsignal_cbench PRIVATE sbench fastsignal fteng-signals)
 target_compile_options(fastsignal_cbench PRIVATE -O3 -DNDEBUG)
 
 # Add custom targets for running the benchmarks

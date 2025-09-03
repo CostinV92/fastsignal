@@ -19,13 +19,13 @@ ComplexParam complex_param{0, "ComplexParam"};
 
 struct Subject;
 
+volatile uint64_t sink = 0;
+
 struct ObserverI
 {
-    volatile uint64_t sink = 0;
-
     virtual void handler1_v() = 0;
     virtual void handler2_v(double value) = 0;
-    virtual void handler3_v(ComplexParam param) = 0;
+    virtual void handler3_v(ComplexParam& param) = 0;
     virtual void connect(Subject& subject) = 0;
     virtual ~ObserverI() = default;
 };
@@ -34,11 +34,11 @@ struct Subject
 {
     FastSignal<void()> sig;
     FastSignal<void(int)> sig_int;
-    FastSignal<void(ComplexParam)> sig_cp;
+    FastSignal<void(ComplexParam&)> sig_cp;
 
     fteng::signal<void()> fteng_sig;
     fteng::signal<void(int)> fteng_sig_int;
-    fteng::signal<void(ComplexParam)> fteng_sig_cp;
+    fteng::signal<void(ComplexParam&)> fteng_sig_cp;
 
     std::vector<ObserverI*> observers;
 
@@ -80,8 +80,8 @@ struct Observer : public ObserverI
     void handler2(double value) { sink += value; }
     void handler2_v(double value) override { sink += value; }
 
-    void handler3(ComplexParam param) { param.value++; }
-    void handler3_v(ComplexParam param) override { param.value++; }
+    void handler3(ComplexParam& param) { ++param.value; }
+    void handler3_v(ComplexParam& param) override { ++param.value; }
 
     void connect(Subject& subject)
     {
@@ -107,7 +107,7 @@ struct Observer : public ObserverI
 };
 
 constexpr int DIST_COUNT = 100;
-constexpr int OBSERVERS_COUNT = 500;
+constexpr int OBSERVERS_COUNT = 5000;
 std::vector<std::unique_ptr<ObserverI>> observers;
 Subject subject;
 
@@ -218,7 +218,7 @@ static void BM_sig_observers2(benchmark::State& state)
         subject.sig_obervers(0.005f);
     }
 }
-BENCHMARK(BM_sig_observers2)->Setup(create_observers)->Name("sig_ibservers(double)");
+BENCHMARK(BM_sig_observers2)->Setup(create_observers)->Name("sig_observers(double)");
 
 static void BM_fteng_sig_observers2(benchmark::State& state)
 {
@@ -242,7 +242,7 @@ static void BM_sig_observers3(benchmark::State& state)
         subject.sig_obervers(complex_param);
     }
 }
-BENCHMARK(BM_sig_observers3)->Setup(create_observers)->Name("sig_ibservers(complex_param)");
+BENCHMARK(BM_sig_observers3)->Setup(create_observers)->Name("sig_observers(complex_param)");
 
 static void BM_fteng_sig_observers3(benchmark::State& state)
 {

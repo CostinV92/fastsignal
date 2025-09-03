@@ -12,7 +12,6 @@ struct ComplexParam
 {
     volatile int value;
     std::string str;
-    std::vector<int> vec(std::make_index_sequence<1000>());
 
     ComplexParam(int value, std::string str) : value(value), str(str) {}
 };
@@ -20,13 +19,13 @@ ComplexParam complex_param{0, "ComplexParam"};
 
 struct Subject;
 
+volatile uint64_t sink = 0;
+
 struct ObserverI
 {
-    volatile uint64_t sink = 0;
-
     virtual void handler1_v() = 0;
     virtual void handler2_v(double value) = 0;
-    virtual void handler3_v(ComplexParam param) = 0;
+    virtual void handler3_v(ComplexParam& param) = 0;
     virtual void connect(Subject& subject) = 0;
     virtual ~ObserverI() = default;
 };
@@ -35,11 +34,11 @@ struct Subject
 {
     FastSignal<void()> sig;
     FastSignal<void(int)> sig_int;
-    FastSignal<void(ComplexParam)> sig_cp;
+    FastSignal<void(ComplexParam&)> sig_cp;
 
     fteng::signal<void()> fteng_sig;
     fteng::signal<void(int)> fteng_sig_int;
-    fteng::signal<void(ComplexParam)> fteng_sig_cp;
+    fteng::signal<void(ComplexParam&)> fteng_sig_cp;
 
     std::vector<ObserverI*> observers;
 
@@ -81,8 +80,8 @@ struct Observer : public ObserverI
     void handler2(double value) { sink += value; }
     void handler2_v(double value) override { sink += value; }
 
-    void handler3(ComplexParam param) { param.value++; }
-    void handler3_v(ComplexParam param) override { param.value++; }
+    void handler3(ComplexParam& param) { ++param.value; }
+    void handler3_v(ComplexParam& param) override { ++param.value; }
 
     void connect(Subject& subject)
     {
@@ -109,7 +108,7 @@ struct Observer : public ObserverI
 
 constexpr int ITERATIONS = 1;
 constexpr int DIST_COUNT = 100;
-constexpr int OBSERVERS_COUNT = 500;
+constexpr int OBSERVERS_COUNT = 5000;
 std::vector<std::unique_ptr<ObserverI>> observers;
 
 template<size_t I>

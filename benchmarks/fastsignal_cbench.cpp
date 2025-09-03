@@ -159,7 +159,7 @@ struct Observer : public ObserverI
 
 constexpr int ITERATIONS = 1;
 constexpr int DIST_COUNT = 100;
-constexpr int OBSERVERS_COUNT = 500;
+constexpr int OBSERVERS_COUNT = 5000;
 std::vector<std::unique_ptr<ObserverI>> observers;
 
 template<size_t I>

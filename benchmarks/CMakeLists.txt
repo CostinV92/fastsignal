@@ -35,6 +35,7 @@ add_custom_target(nbench
     DEPENDS fastsignal_nbench
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running FastSignal nanobench benchmark..."
+    USES_TERMINAL
 )
 
 add_custom_target(gbench
@@ -42,6 +43,7 @@ add_custom_target(gbench
     DEPENDS fastsignal_gbench
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running FastSignal Google benchmark..."
+    USES_TERMINAL
 )
 
 add_custom_target(cbench
@@ -49,5 +51,5 @@ add_custom_target(cbench
     DEPENDS fastsignal_cbench
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running FastSignal custom benchmark..."
+    USES_TERMINAL
 )
-

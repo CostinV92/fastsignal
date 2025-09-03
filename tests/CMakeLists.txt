@@ -27,4 +27,5 @@ add_custom_target(test
     DEPENDS fastsignal_tests
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running FastSignal tests..."
+    USES_TERMINAL
 )

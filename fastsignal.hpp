@@ -31,25 +31,32 @@ struct Connection
 {
     FastSignalBase *sig;
     int index;
+    int ref_count = 1;
 
     Connection(FastSignalBase *sig, int index) :
         sig(sig), index(index) {}
 
     Connection(const Connection &other) = delete;
     Connection &operator=(const Connection &other) = delete;
+    Connection(Connection &&other) = delete;
+    Connection &operator=(Connection &&other) = delete;
 
-    Connection(Connection &&other) noexcept :
-        sig(other.sig), index(other.index) {
-        other.sig = nullptr;
-        other.index = -1;
+    void set_sig(FastSignalBase *sig) {
+        this->sig = sig;
     }
 
-    Connection &operator=(Connection &&other) noexcept {
-        sig = other.sig;
-        index = other.index;
-        other.sig = nullptr;
-        other.index = -1;
-        return *this;
+    static void inc(Connection *conn) {
+        if (!conn)
+            return;
+        ++conn->ref_count;
+    }
+
+    static void dec(Connection *conn) {
+        if (!conn)
+            return;
+        --conn->ref_count;
+        if (conn->ref_count == 0)
+            delete conn;
     }
 
     inline void disconnect();
@@ -59,7 +66,14 @@ struct ConnectionView
 {
     Connection *connection;
 
-    ConnectionView(Connection *connection = nullptr) : connection(connection) {}
+    ConnectionView(Connection *connection = nullptr) : connection(connection) {
+        Connection::inc(connection);
+    }
+
+    ~ConnectionView() {
+        Connection::dec(connection);
+        connection = nullptr;
+    }
 
     ConnectionView(const ConnectionView &other) = delete;
     ConnectionView &operator=(const ConnectionView &other) = delete;
@@ -79,6 +93,7 @@ struct ConnectionView
             return;
 
         connection->disconnect();
+        Connection::dec(connection);
         connection = nullptr;
     }
 };
@@ -111,7 +126,8 @@ struct FastSignalBase
         for (auto &conn : m_connections) {
             if (!conn)
                 continue;
-            delete conn;
+            conn->set_sig(nullptr);
+            Connection::dec(conn);
             conn = nullptr;
         }
     }
@@ -186,7 +202,8 @@ public:
         size_t size = 0;
         for (size_t i = 0; i < m_callbacks.size(); i++) {
             if (m_connections[i]->index == -1) {
-                delete m_connections[i];
+                m_connections[i]->set_sig(nullptr);
+                Connection::dec(m_connections[i]);
                 m_connections[i] = nullptr;
             } else {
                 m_callbacks[size] = m_callbacks[i];
@@ -203,7 +220,8 @@ public:
 };
 
 inline void Connection::disconnect() {
-    sig->dirty(index);
+    if (sig)
+        sig->dirty(index);
 }
 
 } // namespace fastsignal

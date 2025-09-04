@@ -287,3 +287,34 @@ TEST_F(FastSignalTest, test_signal_move)
     sig3(4);
     EXPECT_EQ(global_value1, 4);
 }
+
+TEST_F(FastSignalTest, test_signal_connection_lifetime)
+{
+    {
+        // Connection outlives the signal
+        // Calling disconnect should not crash
+        ConnectionView con1;
+        Foo observer;
+        {
+            FastSignal<void(int)> sig1;
+            con1 = sig1.add<&Foo::set_value>(&observer);
+            EXPECT_CALL(observer, set_value(1));
+            sig1(1);
+        }
+        con1.disconnect();
+    }
+
+    {
+        // Signal outlives the connection
+        // signaling should work, callback should be called
+        FastSignal<void(int)> sig1;
+        Foo observer;
+        {
+            auto con2 = sig1.add<&Foo::set_value>(&observer);
+            EXPECT_CALL(observer, set_value(1));
+            sig1(1);
+        }
+        EXPECT_CALL(observer, set_value(2));
+        sig1(2);
+    }
+}

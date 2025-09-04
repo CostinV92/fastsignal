@@ -121,6 +121,27 @@ inline void Connection::disconnect()
 
 } // namespace internal
 
+class Disconnectable
+{
+    std::vector<internal::Connection*> connections;
+
+    template<typename Signature>
+    friend class FastSignal;
+    void add_connection(internal::Connection *conn) {
+        connections.emplace_back(conn);
+        internal::Connection::inc(conn);
+    }
+
+public:
+    virtual ~Disconnectable() {
+        for (auto &conn : connections) {
+            conn->disconnect();
+            internal::Connection::dec(conn);
+            conn = nullptr;
+        }
+    }
+};
+
 class ConnectionView
 {
     internal::Connection *connection;
@@ -175,8 +196,13 @@ public:
             }));
 
         ++callback_count;
-        connections.emplace_back(new internal::Connection(this, callbacks.size() - 1));
-        return ConnectionView(connections.back());
+        internal::Connection *conn = new internal::Connection(this, callbacks.size() - 1);
+        connections.emplace_back(conn);
+
+        if constexpr (std::is_base_of_v<Disconnectable, ObjType>)
+            obj->add_connection(conn);
+
+        return ConnectionView(conn);
     }
 
     ConnectionView add(RetType(fun)(ArgTypes...)) {

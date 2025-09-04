@@ -50,6 +50,8 @@ struct Observer {
     MOCK_METHOD(void, set_param_const, (const GlobalParam& x));
 };
 
+struct DisconnectableObserver : public Observer, public Disconnectable {};
+
 class FastSignalTest : public ::testing::Test
 {
 protected:
@@ -315,5 +317,160 @@ TEST_F(FastSignalTest, test_signal_connection_lifetime)
         }
         EXPECT_CALL(observer, set_value(2));
         sig1(2);
+    }
+}
+
+TEST_F(FastSignalTest, test_signal_disconnectable)
+{
+    {
+        // Signal outlives DisconnectableObserver
+        // Signaling after DisconnectableObserver is destroyed should not crash
+        FastSignal<void(int)> sig;
+        {
+            DisconnectableObserver observer;
+            sig.add<&DisconnectableObserver::set_value>(&observer);
+
+            EXPECT_EQ(sig.count(), 1);
+            EXPECT_CALL(observer, set_value(1));
+            sig(1);
+        }
+        EXPECT_EQ(sig.count(), 0);
+        sig(2);
+    }
+
+    {
+        // Signal outlives DisconnectableObserver
+        // DisconnectableObserver has multiple connections
+        // Signaling after DisconnectableObserver is destroyed should not crash
+        FastSignal<void(int)> sig;
+        {
+            DisconnectableObserver observer;
+            sig.add<&DisconnectableObserver::set_value>(&observer);
+            sig.add<&DisconnectableObserver::set_value>(&observer);
+
+            EXPECT_EQ(sig.count(), 2);
+            EXPECT_CALL(observer, set_value(1)).Times(2);
+            sig(1);
+        }
+        EXPECT_EQ(sig.count(), 0);
+        sig(2);
+    }
+
+    {
+        // DisconnectableObserver outlives signal
+        // Destroying the DisconnectableObserver should not crash and should not cause memory leak
+        DisconnectableObserver observer;
+        {
+            FastSignal<void(int)> sig;
+            sig.add<&DisconnectableObserver::set_value>(&observer);
+            sig.add<&DisconnectableObserver::set_value>(&observer);
+            EXPECT_EQ(sig.count(), 2);
+            EXPECT_CALL(observer, set_value(1)).Times(2);
+            sig(1);
+        }
+        // Memory should not be leaked
+    }
+
+    {
+        // Connection outlives DisconnectableObserver
+        // Calling disconnect should not crash
+        FastSignal<void(int)> sig;
+        ConnectionView con;
+        {
+            DisconnectableObserver observer;
+            con = sig.add<&DisconnectableObserver::set_value>(&observer);
+            EXPECT_EQ(sig.count(), 1);
+
+            EXPECT_CALL(observer, set_value(1));
+            sig(1);
+        }
+        EXPECT_EQ(sig.count(), 0);
+        sig(2);
+        con.disconnect();
+        sig(3);
+    }
+
+    {
+        // DisconnectableObserver outlives connection.disconnect()
+        // Destroying the DisconnectableObserver should not crash and should not cause memory leak
+        DisconnectableObserver observer;
+        {
+            FastSignal<void(int)> sig;
+            auto con = sig.add<&DisconnectableObserver::set_value>(&observer);
+            EXPECT_EQ(sig.count(), 1);
+            EXPECT_CALL(observer, set_value(1));
+            sig(1);
+
+            con.disconnect();
+            EXPECT_CALL(observer, set_value(1)).Times(0);
+            EXPECT_EQ(sig.count(), 0);
+            sig(2);
+        }
+    }
+}
+
+TEST_F(FastSignalTest, test_signal_multiple_disconnectable_undisconnectable_observers)
+{
+    constexpr int OBSERVER_COUNT = 100;
+
+    {
+        // Disconnect undisconnectable observers
+        // Undisconnectable observers should not be affected
+        FastSignal<void(int)> sig;
+        std::array<Observer, OBSERVER_COUNT> observers;
+        std::array<DisconnectableObserver, OBSERVER_COUNT> disconnectable_observers;
+        std::array<ConnectionView, OBSERVER_COUNT> connections;
+
+        for (int i = 0; i < OBSERVER_COUNT; ++i) {
+            connections[i] = sig.add<&Observer::set_value>(&observers[i]);
+            sig.add<&DisconnectableObserver::set_value>(&disconnectable_observers[i]);
+        }
+
+        for (int i = 0; i < OBSERVER_COUNT; ++i) {
+            EXPECT_CALL(observers[i], set_value(1));
+            EXPECT_CALL(disconnectable_observers[i], set_value(1));
+        }
+        sig(1);
+
+        for (int i = 0; i < OBSERVER_COUNT; ++i) {
+            connections[i].disconnect();
+            EXPECT_CALL(observers[i], set_value(1)).Times(0);
+            EXPECT_CALL(disconnectable_observers[i], set_value(1)).Times(1);
+        }
+        sig(1);
+    }
+
+    {
+        // Undisconnectable observers outlive disconnectable observers
+        // Undisconnectable observers should not be affected
+        // Calling disconnect should not crash
+        FastSignal<void(int)> sig;
+        std::array<Observer, OBSERVER_COUNT> observers;
+        std::array<ConnectionView, OBSERVER_COUNT> connections;
+
+        {
+            std::array<DisconnectableObserver, OBSERVER_COUNT> disconnectable_observers;
+            for (int i = 0; i < OBSERVER_COUNT; ++i) {
+                connections[i] = sig.add<&Observer::set_value>(&observers[i]);
+                sig.add<&DisconnectableObserver::set_value>(&disconnectable_observers[i]);
+            }
+
+            for (int i = 0; i < OBSERVER_COUNT; ++i) {
+                EXPECT_CALL(observers[i], set_value(1));
+                EXPECT_CALL(disconnectable_observers[i], set_value(1));
+            }
+            sig(1);
+        }
+
+        for (int i = 0; i < OBSERVER_COUNT; ++i)
+            EXPECT_CALL(observers[i], set_value(1)).Times(1);
+        sig(1);
+
+        for (int i = 0; i < OBSERVER_COUNT; ++i)
+            connections[i].disconnect();
+
+        for (int i = 0; i < OBSERVER_COUNT; ++i)
+            EXPECT_CALL(observers[i], set_value(1)).Times(0);
+        sig(1);
     }
 }

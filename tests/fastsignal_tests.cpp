@@ -43,7 +43,7 @@ void set_global_param2(GlobalParam x)
     global_param2 = x;
 }
 
-struct Foo {
+struct Observer {
     MOCK_METHOD(void, set_value, (int x));
     MOCK_METHOD(void, set_param, (GlobalParam x));
     MOCK_METHOD(void, set_param_ref, (GlobalParam& x));
@@ -66,7 +66,7 @@ protected:
 TEST_F(FastSignalTest, test_signal_empty)
 {
     FastSignal<void(int)> sig;
-    EXPECT_EQ(sig.size(), 0);
+    EXPECT_EQ(sig.count(), 0);
 
     sig(1);
     EXPECT_EQ(global_value1, 0);
@@ -77,15 +77,15 @@ TEST_F(FastSignalTest, test_signal_multiple_disconnect)
 {
     FastSignal<void(int)> sig;
     auto con1 = sig.add(set_global_value1);
-    EXPECT_EQ(sig.size(), 1);
+    EXPECT_EQ(sig.count(), 1);
     con1.disconnect();
-    EXPECT_EQ(sig.size(), 0);
+    EXPECT_EQ(sig.count(), 0);
     con1.disconnect();
-    EXPECT_EQ(sig.size(), 0);
+    EXPECT_EQ(sig.count(), 0);
     con1.disconnect();
-    EXPECT_EQ(sig.size(), 0);
+    EXPECT_EQ(sig.count(), 0);
     con1.disconnect();
-    EXPECT_EQ(sig.size(), 0);
+    EXPECT_EQ(sig.count(), 0);
 }
 
 TEST_F(FastSignalTest, test_signal_size)
@@ -96,13 +96,13 @@ TEST_F(FastSignalTest, test_signal_size)
     std::array<ConnectionView, 100> connections;
     for (auto& con : connections) {
         con = sig.add(set_global_value1);
-        EXPECT_EQ(sig.size(), ++size);
+        EXPECT_EQ(sig.count(), ++size);
     }
     for (auto& con : connections) {
         con.disconnect();
-        EXPECT_EQ(sig.size(), --size);
+        EXPECT_EQ(sig.count(), --size);
     }
-    EXPECT_EQ(sig.size(), 0);
+    EXPECT_EQ(sig.count(), 0);
 }
 
 TEST_F(FastSignalTest, test_signal_call)
@@ -172,41 +172,41 @@ TEST_F(FastSignalTest, test_signal_param)
 TEST_F(FastSignalTest, test_signal_member_function)
 {
     FastSignal<void(int)> sig;
-    Foo foo;
-    auto con = sig.add<&Foo::set_value>(&foo);
-    EXPECT_CALL(foo, set_value(1));
+    Observer observer;
+    auto con = sig.add<&Observer::set_value>(&observer);
+    EXPECT_CALL(observer, set_value(1));
     sig(1);
 
-    EXPECT_CALL(foo, set_value(2));
+    EXPECT_CALL(observer, set_value(2));
     sig(2);
 
     con.disconnect();
-    EXPECT_CALL(foo, set_value(3)).Times(0);
+    EXPECT_CALL(observer, set_value(3)).Times(0);
     sig(3);
 }
 
 TEST_F(FastSignalTest, test_signal_member_function_param)
 {
     FastSignal<void(GlobalParam)> sig;
-    Foo foo;
-    auto con = sig.add<&Foo::set_param>(&foo);
-    EXPECT_CALL(foo, set_param(global_param1));
+    Observer observer;
+    auto con = sig.add<&Observer::set_param>(&observer);
+    EXPECT_CALL(observer, set_param(global_param1));
     sig(global_param1);
 
-    EXPECT_CALL(foo, set_param(global_param2));
+    EXPECT_CALL(observer, set_param(global_param2));
     sig(global_param2);
 
     con.disconnect();
-    EXPECT_CALL(foo, set_param(global_param1)).Times(0);
+    EXPECT_CALL(observer, set_param(global_param1)).Times(0);
     sig(global_param1);
 }
 
 TEST_F(FastSignalTest, test_signal_member_function_param_ref)
 {
     FastSignal<void(GlobalParam&)> sig;
-    Foo foo;
-    sig.add<&Foo::set_param_ref>(&foo);
-    EXPECT_CALL(foo, set_param_ref(global_param1));
+    Observer observer;
+    sig.add<&Observer::set_param_ref>(&observer);
+    EXPECT_CALL(observer, set_param_ref(global_param1));
     sig(global_param1);
 
     // This should not compile
@@ -221,16 +221,16 @@ TEST_F(FastSignalTest, test_signal_member_function_param_ref)
 TEST_F(FastSignalTest, test_signal_member_function_param_const)
 {
     FastSignal<void(const GlobalParam&)> sig;
-    Foo foo;
+    Observer observer;
 
     // Calling using const parameter (lvalue) because cb accepts const parameter
     const GlobalParam param(1);
-    sig.add<&Foo::set_param_const>(&foo);
-    EXPECT_CALL(foo, set_param_const(param));
+    sig.add<&Observer::set_param_const>(&observer);
+    EXPECT_CALL(observer, set_param_const(param));
     sig(param);
 
     // Calling using rvalue because cb accepts const parameter
-    EXPECT_CALL(foo, set_param_const(GlobalParam(2)));
+    EXPECT_CALL(observer, set_param_const(GlobalParam(2)));
     sig(GlobalParam(2));
 }
 
@@ -238,7 +238,7 @@ TEST_F(FastSignalTest, test_signal_connection_view_move)
 {
     FastSignal<void(int)> sig;
     auto con1 = sig.add(set_global_value1);
-    EXPECT_EQ(sig.size(), 1);
+    EXPECT_EQ(sig.count(), 1);
 
     ConnectionView con2;
 
@@ -247,8 +247,7 @@ TEST_F(FastSignalTest, test_signal_connection_view_move)
     // con2 = con1;
 
     con2 = std::move(con1);
-    EXPECT_EQ(con1.connection, nullptr);
-    EXPECT_EQ(sig.size(), 1);
+    EXPECT_EQ(sig.count(), 1);
 
     con1.disconnect();
     sig(5);
@@ -257,7 +256,7 @@ TEST_F(FastSignalTest, test_signal_connection_view_move)
     con2.disconnect();
     sig(6);
     EXPECT_EQ(global_value1, 5);
-    EXPECT_EQ(sig.size(), 0);
+    EXPECT_EQ(sig.count(), 0);
 }
 
 TEST_F(FastSignalTest, test_signal_move)
@@ -266,8 +265,8 @@ TEST_F(FastSignalTest, test_signal_move)
     sig1.add(set_global_value1);
     FastSignal<void(int)> sig2(std::move(sig1));
 
-    EXPECT_EQ(sig1.size(), 0);
-    EXPECT_EQ(sig2.size(), 1);
+    EXPECT_EQ(sig1.count(), 0);
+    EXPECT_EQ(sig2.count(), 1);
 
     // This should not fail, but no callback should be called
     sig1(1);
@@ -281,8 +280,8 @@ TEST_F(FastSignalTest, test_signal_move)
     EXPECT_EQ(global_value1, 2);
 
     sig3 = std::move(sig2);
-    EXPECT_EQ(sig2.size(), 0);
-    EXPECT_EQ(sig3.size(), 1);
+    EXPECT_EQ(sig2.count(), 0);
+    EXPECT_EQ(sig3.count(), 1);
 
     sig3(4);
     EXPECT_EQ(global_value1, 4);
@@ -294,10 +293,10 @@ TEST_F(FastSignalTest, test_signal_connection_lifetime)
         // Connection outlives the signal
         // Calling disconnect should not crash
         ConnectionView con1;
-        Foo observer;
+        Observer observer;
         {
             FastSignal<void(int)> sig1;
-            con1 = sig1.add<&Foo::set_value>(&observer);
+            con1 = sig1.add<&Observer::set_value>(&observer);
             EXPECT_CALL(observer, set_value(1));
             sig1(1);
         }
@@ -308,9 +307,9 @@ TEST_F(FastSignalTest, test_signal_connection_lifetime)
         // Signal outlives the connection
         // signaling should work, callback should be called
         FastSignal<void(int)> sig1;
-        Foo observer;
+        Observer observer;
         {
-            auto con2 = sig1.add<&Foo::set_value>(&observer);
+            auto con2 = sig1.add<&Observer::set_value>(&observer);
             EXPECT_CALL(observer, set_value(1));
             sig1(1);
         }

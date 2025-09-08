@@ -21,6 +21,7 @@ struct Callback
 {
     void *obj = nullptr;
     void *fun = nullptr;
+    Connection *conn = nullptr;
 };
 
 struct Connection
@@ -62,7 +63,6 @@ class FastSignalBase
 {
 protected:
     std::vector<Callback> callbacks;
-    std::vector<Connection*> connections;
     
     size_t callback_count = 0;
     bool is_dirty = false;
@@ -85,12 +85,12 @@ public:
     }
 
     virtual ~FastSignalBase() {
-        for (auto &conn : connections) {
-            if (!conn)
+        for (auto &cb : callbacks) {
+            if (!cb.conn)
                 continue;
-            conn->set_sig(nullptr);
-            Connection::dec(conn);
-            conn = nullptr;
+            cb.conn->set_sig(nullptr);
+            Connection::dec(cb.conn);
+            cb.conn = nullptr;
         }
     }
 
@@ -195,8 +195,7 @@ public:
 
         ++callback_count;
         internal::Connection *conn = new internal::Connection(this, callbacks.size() - 1);
-        connections.emplace_back(conn);
-
+        callbacks.back().conn = conn;
         if constexpr (std::is_base_of_v<Disconnectable, ObjType>)
             obj->add_connection(conn);
 
@@ -210,8 +209,8 @@ public:
         callbacks.push_back({nullptr, reinterpret_cast<void*>(fun)});
 
         ++callback_count;
-        connections.emplace_back(new internal::Connection(this, callbacks.size() - 1));
-        return ConnectionView(connections.back());
+        callbacks.back().conn = new internal::Connection(this, callbacks.size() - 1);
+        return ConnectionView(callbacks.back().conn);
     }
 
     // TODO(victor);
@@ -237,21 +236,19 @@ public:
 
         size_t size = 0;
         for (size_t i = 0; i < callbacks.size(); i++) {
-            if (connections[i]->index == -1) {
-                connections[i]->set_sig(nullptr);
-                internal::Connection::dec(connections[i]);
-                connections[i] = nullptr;
+            if (callbacks[i].fun == nullptr) {
+                callbacks[i].conn->set_sig(nullptr);
+                internal::Connection::dec(callbacks[i].conn);
+                callbacks[i].conn = nullptr;
             } else {
                 callbacks[size] = callbacks[i];
-                connections[size] = connections[i];
-                connections[size]->index = size;
+                callbacks[size].conn->index = size;
                 size++;
             }
         }
 
         is_dirty = false;
         callbacks.resize(size);
-        connections.resize(size);
     }
 };
 

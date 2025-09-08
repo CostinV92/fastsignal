@@ -173,14 +173,22 @@ public:
         connection = nullptr;
     }
 
-    ConnectionView(const ConnectionView &other) = delete;
-    ConnectionView &operator=(const ConnectionView &other) = delete;
+    ConnectionView(const ConnectionView &other) {
+        connection = other.connection;
+        internal::Connection::inc(connection);
+    }
+
+    ConnectionView& operator=(const ConnectionView &other) {
+        connection = other.connection;
+        internal::Connection::inc(connection);
+        return *this;
+    }
 
     ConnectionView(ConnectionView &&other) noexcept : connection(other.connection) {
         other.connection = nullptr;
     }
 
-    ConnectionView &operator=(ConnectionView &&other) noexcept {
+    ConnectionView& operator=(ConnectionView &&other) noexcept {
         connection = other.connection;
         other.connection = nullptr;
         return *this;

@@ -244,10 +244,6 @@ TEST_F(FastSignalTest, test_signal_connection_view_move)
 
     ConnectionView con2;
 
-    // This should not compile
-    // Copy assignment operator is deleted
-    // con2 = con1;
-
     con2 = std::move(con1);
     EXPECT_EQ(sig.count(), 1);
 
@@ -580,5 +576,33 @@ TEST_F(FastSignalTest, test_signal_copy)
 
         EXPECT_EQ(sig1.actual_count(), 0);
         EXPECT_EQ(sig2.actual_count(), 0);
+    }
+}
+
+TEST_F(FastSignalTest, test_signal_connection_view_copy)
+{
+    {
+        FastSignal<void(int)> sig;
+        auto con1 = sig.add(set_global_value1);
+        ConnectionView con2(con1);
+
+        EXPECT_EQ(sig.count(), 1);
+        con2.disconnect();
+
+        EXPECT_EQ(sig.count(), 0);
+        con1.disconnect();
+    }
+
+    {
+        FastSignal<void(int)> sig;
+        auto con1 = sig.add(set_global_value1);
+        ConnectionView con2;
+        con2 = con1;
+
+        EXPECT_EQ(sig.count(), 1);
+        con2.disconnect();
+
+        EXPECT_EQ(sig.count(), 0);
+        con1.disconnect();
     }
 }

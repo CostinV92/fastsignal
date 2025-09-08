@@ -35,6 +35,9 @@ FetchContent_MakeAvailable(
     fteng-signals
 )
 
+add_executable(fastsignal_memory fastsignal_memory.cpp)
+target_link_libraries(fastsignal_memory PRIVATE fastsignal)
+
 add_executable(fastsignal_nbench fastsignal_nbench.cpp)
 target_link_libraries(fastsignal_nbench PRIVATE nanobench fastsignal fteng-signals)
 target_compile_options(fastsignal_nbench PRIVATE -O3 -DNDEBUG)
@@ -48,6 +51,14 @@ target_link_libraries(fastsignal_cbench PRIVATE sbench fastsignal fteng-signals)
 target_compile_options(fastsignal_cbench PRIVATE -O3 -DNDEBUG)
 
 # Add custom targets for running the benchmarks
+add_custom_target(memory
+    COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_memory
+    DEPENDS fastsignal_memory
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "FastSignal memory usage..."
+    USES_TERMINAL
+)
+
 add_custom_target(nbench
     COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_nbench
     DEPENDS fastsignal_nbench

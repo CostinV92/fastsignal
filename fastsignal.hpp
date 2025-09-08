@@ -21,8 +21,6 @@ struct Callback
 {
     void *obj = nullptr;
     void *fun = nullptr;
-
-    Callback(void *obj = nullptr, void *fun = nullptr) : obj(obj), fun(fun) {}
 };
 
 struct Connection
@@ -190,10 +188,10 @@ public:
         static_assert(std::is_invocable_v<decltype(fun), ObjType*, ArgTypes...>,
             "Callback must be invocable with the signal's declared parameters");
 
-        callbacks.emplace_back(reinterpret_cast<void*>(obj),
+        callbacks.push_back({reinterpret_cast<void*>(obj),
             reinterpret_cast<void*>(+[](void *obj, const ArgTypes&... args) -> RetType {
                 (reinterpret_cast<ObjType*>(obj)->*fun)(args...);
-            }));
+            })});
 
         ++callback_count;
         internal::Connection *conn = new internal::Connection(this, callbacks.size() - 1);
@@ -209,7 +207,7 @@ public:
         static_assert(std::is_invocable_v<decltype(fun), ArgTypes...>,
             "Callback must be invocable with the signal's declared parameters");
 
-        callbacks.emplace_back(nullptr, reinterpret_cast<void*>(fun));
+        callbacks.push_back({nullptr, reinterpret_cast<void*>(fun)});
 
         ++callback_count;
         connections.emplace_back(new internal::Connection(this, callbacks.size() - 1));

@@ -69,15 +69,34 @@ protected:
 
 public:
     FastSignalBase() = default;
-    FastSignalBase(const FastSignalBase &other) = delete;
-    FastSignalBase &operator=(const FastSignalBase &other) = delete;
+
+    FastSignalBase(const FastSignalBase &other) : callbacks(other.callbacks),
+        callback_count(other.callback_count), is_dirty(other.is_dirty) {
+        for (auto &cb : callbacks) {
+            if (!cb.conn)
+                continue;
+            cb.conn = new internal::Connection(this, cb.conn->index);
+        }
+    };
+
+    FastSignalBase& operator=(const FastSignalBase &other) {
+        callbacks = other.callbacks;
+        callback_count = other.callback_count;
+        is_dirty = other.is_dirty;
+        for (auto &cb : callbacks) {
+            if (!cb.conn)
+                continue;
+            cb.conn = new internal::Connection(this, cb.conn->index);
+        }
+        return *this;
+    }
 
     FastSignalBase(FastSignalBase &&other) noexcept :
         callbacks(std::move(other.callbacks)), callback_count(other.callback_count) {
         other.callback_count = 0;
     }
 
-    FastSignalBase &operator=(FastSignalBase &&other) noexcept {
+    FastSignalBase& operator=(FastSignalBase &&other) noexcept {
         callbacks = std::move(other.callbacks);
         callback_count = other.callback_count;
         other.callback_count = 0;
@@ -250,6 +269,12 @@ public:
         is_dirty = false;
         callbacks.resize(size);
     }
+
+#ifdef FASTSIGNAL_TEST
+    size_t actual_count() const {
+        return callbacks.size();
+    }
+#endif
 };
 
 } // namespace fastsignal

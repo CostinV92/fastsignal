@@ -474,3 +474,111 @@ TEST_F(FastSignalTest, test_signal_multiple_disconnectable_undisconnectable_obse
         sig(1);
     }
 }
+
+TEST_F(FastSignalTest, test_signal_copy)
+{
+    {
+        // sig2 is a copy of sig1
+        // sig2 should not be affected by the disconnect of con1
+        Observer observer;
+        FastSignal<void(int)> sig1;
+
+        auto con1 = sig1.add<&Observer::set_value>(&observer);
+        FastSignal<void(int)> sig2(sig1);
+
+        EXPECT_EQ(sig1.count(), 1);
+        EXPECT_EQ(sig2.count(), 1);
+
+        EXPECT_CALL(observer, set_value(1));
+        sig1(1);
+        EXPECT_CALL(observer, set_value(2));
+        sig2(2);
+
+        con1.disconnect();
+        EXPECT_CALL(observer, set_value(3));
+        sig2(3);
+    }
+
+    {
+        // sig2 is a copy of sig1 after disconnect
+        // sig2 should be dirty
+        Observer observer;
+        FastSignal<void(int)> sig1;
+
+        auto con1 = sig1.add<&Observer::set_value>(&observer);
+        con1.disconnect();
+
+        FastSignal<void(int)> sig2(sig1);
+
+        EXPECT_EQ(sig1.count(), 0);
+        EXPECT_EQ(sig2.count(), 0);
+
+        EXPECT_EQ(sig1.actual_count(), 1);
+        EXPECT_EQ(sig2.actual_count(), 1);
+
+        EXPECT_CALL(observer, set_value(1)).Times(0);
+        sig1(1);
+        EXPECT_CALL(observer, set_value(2)).Times(0);
+        sig2(2);
+
+        EXPECT_EQ(sig1.count(), 0);
+        EXPECT_EQ(sig2.count(), 0);
+
+        EXPECT_EQ(sig1.actual_count(), 0);
+        EXPECT_EQ(sig2.actual_count(), 0);
+    }
+
+    // Same tests, but with assignment
+    {
+        // sig2 is a copy of sig1
+        // sig2 should not be affected by the disconnect of con1
+        Observer observer;
+        FastSignal<void(int)> sig1;
+
+        auto con1 = sig1.add<&Observer::set_value>(&observer);
+        FastSignal<void(int)> sig2;
+        sig2 = sig1;
+
+        EXPECT_EQ(sig1.count(), 1);
+        EXPECT_EQ(sig2.count(), 1);
+
+        EXPECT_CALL(observer, set_value(1));
+        sig1(1);
+        EXPECT_CALL(observer, set_value(2));
+        sig2(2);
+
+        con1.disconnect();
+        EXPECT_CALL(observer, set_value(3));
+        sig2(3);
+    }
+
+    {
+        // sig2 is a copy of sig1 after disconnect
+        // sig2 should be dirty
+        Observer observer;
+        FastSignal<void(int)> sig1;
+
+        auto con1 = sig1.add<&Observer::set_value>(&observer);
+        con1.disconnect();
+
+        FastSignal<void(int)> sig2;
+        sig2 = sig1;
+
+        EXPECT_EQ(sig1.count(), 0);
+        EXPECT_EQ(sig2.count(), 0);
+
+        EXPECT_EQ(sig1.actual_count(), 1);
+        EXPECT_EQ(sig2.actual_count(), 1);
+
+        EXPECT_CALL(observer, set_value(1)).Times(0);
+        sig1(1);
+        EXPECT_CALL(observer, set_value(2)).Times(0);
+        sig2(2);
+
+        EXPECT_EQ(sig1.count(), 0);
+        EXPECT_EQ(sig2.count(), 0);
+
+        EXPECT_EQ(sig1.actual_count(), 0);
+        EXPECT_EQ(sig2.actual_count(), 0);
+    }
+}

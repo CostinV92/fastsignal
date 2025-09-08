@@ -21,6 +21,8 @@ target_link_libraries(
   GTest::gmock_main
 )
 
+target_compile_options(fastsignal_tests PRIVATE -DFASTSIGNAL_TEST)
+
 # Add custom target for running the tests
 add_custom_target(test
     COMMAND ${CMAKE_BINARY_DIR}/bin/fastsignal_tests

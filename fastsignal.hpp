@@ -62,10 +62,10 @@ struct Connection
 class FastSignalBase
 {
 protected:
-    std::vector<Callback> callbacks;
+    mutable std::vector<Callback> callbacks;
     
     size_t callback_count = 0;
-    bool is_dirty = false;
+    mutable bool is_dirty = false;
 
 public:
     FastSignalBase() = default;
@@ -246,7 +246,7 @@ public:
     // }
 
     template<typename... ActualArgs>
-    void operator()(ActualArgs&&... args) {
+    void operator()(ActualArgs&&... args) const {
         // TODO(victor) - check if the parameters match the signature of the callback
         for (auto &cb : callbacks) {
             if (cb.fun == nullptr)

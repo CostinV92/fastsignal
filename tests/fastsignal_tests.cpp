@@ -606,3 +606,18 @@ TEST_F(FastSignalTest, test_signal_connection_view_copy)
         con1.disconnect();
     }
 }
+
+TEST_F(FastSignalTest, test_signal_const_obj)
+{
+    // A const object should be able to call the signal
+    Observer observer;
+    FastSignal<void(int)> sig;
+    sig.add<&Observer::set_value>(&observer);
+
+    EXPECT_CALL(observer, set_value(1));
+    sig(1);
+
+    const FastSignal<void(int)> sig2(sig);
+    EXPECT_CALL(observer, set_value(2));
+    sig2(2);
+}

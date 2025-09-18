@@ -2,12 +2,6 @@
 
 A lightweight, header-only C++ signal/slot library designed for high performance and ease of use.
 
-## Features
-
-- **Header-only**: No compilation required, just include `fastsignal.hpp`
-- **Zero dependencies**: Only uses standard C++17 features
-- **High performance**: Optimized for minimal overhead during signal emission
-
 ## Quick Start
 
 ```cpp

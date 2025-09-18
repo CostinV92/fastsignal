@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.25.1)
 project(FastSignal VERSION 1.0.0 LANGUAGES CXX)
 
 # Avoid CMake warning about CMP0135

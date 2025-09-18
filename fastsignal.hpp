@@ -212,8 +212,8 @@ class FastSignal<RetType(ArgTypes...)> final : public internal::FastSignalBase
 public:
     template<auto fun, class ObjType>
     ConnectionView add(ObjType *obj) {
-        static_assert(std::is_invocable_v<decltype(fun), ObjType*, ArgTypes...>,
-            "Callback must be invocable with the signal's declared parameters");
+        static_assert(std::is_same_v<decltype(fun), RetType(ObjType::*)(ArgTypes...)>,
+            "Callback must match the signal's declared signature");
 
         callbacks.push_back({reinterpret_cast<void*>(obj),
             reinterpret_cast<void*>(+[](void *obj, const ArgTypes&... args) -> RetType {
@@ -230,9 +230,6 @@ public:
     }
 
     ConnectionView add(RetType(fun)(ArgTypes...)) {
-        static_assert(std::is_invocable_v<decltype(fun), ArgTypes...>,
-            "Callback must be invocable with the signal's declared parameters");
-
         callbacks.push_back({nullptr, reinterpret_cast<void*>(fun)});
 
         ++callback_count;

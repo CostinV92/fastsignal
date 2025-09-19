@@ -102,7 +102,7 @@ UTs are available in the `tests/` directory. Run them with:
 
 ```bash
 mkdir build && cd build
-cmake .. -GNinja    # this will download: googletest, nanobench, google benchmark and sbench
+cmake .. -GNinja    # this will download: googletest, nanobench, google benchmark, sbench, and fteng signals
 ninja test          # this will build: googletest
 ```
 
@@ -113,10 +113,12 @@ There are 3 micro-benchmark libraries that are used for benchmarking `fastsignal
 - `google benchmark` (gbench): https://github.com/google/benchmark
 - `sbench` (cbench): https://github.com/CostinV92/SBench
 
+The library is tested agains `fteng signals` - https://github.com/CostinV92/fteng-signals
+
 Performance benchmarks are available in the `benchmarks/` directory. Run them with:
 
 ```bash
 mkdir build && cd build
-cmake .. -GNinja                # this will download: googletest, nanobench, google benchmark and sbench
+cmake .. -GNinja                # this will download: googletest, nanobench, google benchmark, sbench and fteng signals
 ninja (nbench|gbench|sbench)    # this will build: (nanobench|google benchmark|sbench)
 ```

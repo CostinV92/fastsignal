@@ -62,50 +62,6 @@ struct Connection
     inline void update_sig_obj(Disconnectable *obj);
 };
 
-} // namespace internal
-
-class Disconnectable
-{
-    std::vector<internal::Connection*> connections;
-
-    template<typename Signature>
-    friend class FastSignal;
-    friend class internal::FastSignalBase;
-
-    void add_connection(internal::Connection *conn) {
-        connections.emplace_back(conn);
-        internal::Connection::inc(conn);
-    }
-
-public:
-
-    Disconnectable() = default;
-
-    Disconnectable(const Disconnectable&) {};
-    Disconnectable& operator=(const Disconnectable&) { return *this; };
-
-    Disconnectable(Disconnectable &&other) : connections(std::move(other.connections)) {
-        for (auto &conn : connections)
-            conn->update_sig_obj(this);
-    };
-    Disconnectable& operator=(Disconnectable &&other) {
-        connections = std::move(other.connections);
-        for (auto &conn : connections)
-            conn->update_sig_obj(this);
-        return *this;
-    };
-
-    virtual ~Disconnectable() {
-        for (auto &conn : connections) {
-            conn->disconnect();
-            internal::Connection::dec(conn);
-            conn = nullptr;
-        }
-    }
-};
-
-namespace internal {
-
 class FastSignalBase
 {
 protected:
@@ -120,7 +76,7 @@ public:
     FastSignalBase(const FastSignalBase&) {}
     FastSignalBase& operator=(const FastSignalBase&) { return *this; }
 
-    FastSignalBase(FastSignalBase &&other) noexcept :
+    FastSignalBase(FastSignalBase &&other) :
         callbacks(std::move(other.callbacks)), callback_count(other.callback_count),
             is_dirty(other.is_dirty) {
         other.callback_count = 0;
@@ -132,7 +88,7 @@ public:
         }
     }
 
-    FastSignalBase& operator=(FastSignalBase &&other) noexcept {
+    FastSignalBase& operator=(FastSignalBase &&other) {
         callbacks = std::move(other.callbacks);
         callback_count = other.callback_count;
         is_dirty = other.is_dirty;
@@ -191,6 +147,46 @@ inline void Connection::update_sig_obj(Disconnectable *obj) {
 
 } // namespace internal
 
+class Disconnectable
+{
+    std::vector<internal::Connection*> connections;
+
+    template<typename Signature>
+    friend class FastSignal;
+    friend class internal::FastSignalBase;
+
+    void add_connection(internal::Connection *conn) {
+        connections.emplace_back(conn);
+        internal::Connection::inc(conn);
+    }
+
+public:
+
+    Disconnectable() = default;
+
+    Disconnectable(const Disconnectable&) {};
+    Disconnectable& operator=(const Disconnectable&) { return *this; };
+
+    Disconnectable(Disconnectable &&other) : connections(std::move(other.connections)) {
+        for (auto &conn : connections)
+            conn->update_sig_obj(this);
+    };
+    Disconnectable& operator=(Disconnectable &&other) {
+        connections = std::move(other.connections);
+        for (auto &conn : connections)
+            conn->update_sig_obj(this);
+        return *this;
+    };
+
+    virtual ~Disconnectable() {
+        for (auto &conn : connections) {
+            conn->disconnect();
+            internal::Connection::dec(conn);
+            conn = nullptr;
+        }
+    }
+};
+
 class ConnectionView
 {
     internal::Connection *connection;
@@ -216,11 +212,11 @@ public:
         return *this;
     }
 
-    ConnectionView(ConnectionView &&other) noexcept : connection(other.connection) {
+    ConnectionView(ConnectionView &&other) : connection(other.connection) {
         other.connection = nullptr;
     }
 
-    ConnectionView& operator=(ConnectionView &&other) noexcept {
+    ConnectionView& operator=(ConnectionView &&other) {
         connection = other.connection;
         other.connection = nullptr;
         return *this;

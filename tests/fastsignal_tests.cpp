@@ -257,7 +257,7 @@ TEST_F(FastSignalTest, test_signal_connection_view_move)
     EXPECT_EQ(sig.count(), 0);
 }
 
-TEST_F(FastSignalTest, test_signal_move)
+TEST_F(FastSignalTest, test_signal_move_simple)
 {
     FastSignal<void(int)> sig1;
     sig1.add(set_global_value1);
@@ -564,6 +564,114 @@ TEST_F(FastSignalTest, test_signal_copy)
         EXPECT_EQ(sig2.count(), 0);
 
         EXPECT_EQ(sig1.actual_count(), 1);
+        EXPECT_EQ(sig2.actual_count(), 1);
+
+        EXPECT_CALL(observer, set_value(1)).Times(0);
+        sig1(1);
+        EXPECT_CALL(observer, set_value(2)).Times(0);
+        sig2(2);
+
+        EXPECT_EQ(sig1.count(), 0);
+        EXPECT_EQ(sig2.count(), 0);
+
+        EXPECT_EQ(sig1.actual_count(), 0);
+        EXPECT_EQ(sig2.actual_count(), 0);
+    }
+}
+
+TEST_F(FastSignalTest, test_signal_move_complex)
+{
+    {
+        // move sig1 into sig2
+        // old connection should point to sig2
+        Observer observer;
+        FastSignal<void(int)> sig1;
+
+        auto con1 = sig1.add<&Observer::set_value>(&observer);
+        FastSignal<void(int)> sig2(std::move(sig1));
+
+        EXPECT_EQ(sig1.count(), 0);
+        EXPECT_EQ(sig2.count(), 1);
+
+        EXPECT_CALL(observer, set_value(1)).Times(0);
+        sig1(1);
+        EXPECT_CALL(observer, set_value(2));
+        sig2(2);
+
+        con1.disconnect();
+        EXPECT_CALL(observer, set_value(3)).Times(0);
+        sig2(3);
+    }
+
+    {
+        // move sig1 into sig2 after disconnect
+        // sig2 should be dirty
+        Observer observer;
+        FastSignal<void(int)> sig1;
+
+        auto con1 = sig1.add<&Observer::set_value>(&observer);
+        con1.disconnect();
+
+        FastSignal<void(int)> sig2(std::move(sig1));
+
+        EXPECT_EQ(sig1.count(), 0);
+        EXPECT_EQ(sig2.count(), 0);
+
+        EXPECT_EQ(sig1.actual_count(), 0);
+        EXPECT_EQ(sig2.actual_count(), 1);
+
+        EXPECT_CALL(observer, set_value(1)).Times(0);
+        sig1(1);
+        EXPECT_CALL(observer, set_value(2)).Times(0);
+        sig2(2);
+
+        EXPECT_EQ(sig1.count(), 0);
+        EXPECT_EQ(sig2.count(), 0);
+
+        EXPECT_EQ(sig1.actual_count(), 0);
+        EXPECT_EQ(sig2.actual_count(), 0);
+    }
+
+    // Same tests, but with assignment
+    {
+        // move sig1 into sig2
+        // old connection should point to sig2
+        Observer observer;
+        FastSignal<void(int)> sig1;
+
+        auto con1 = sig1.add<&Observer::set_value>(&observer);
+        FastSignal<void(int)> sig2;
+        sig2 = std::move(sig1);
+
+        EXPECT_EQ(sig1.count(), 0);
+        EXPECT_EQ(sig2.count(), 1);
+
+        EXPECT_CALL(observer, set_value(1)).Times(0);
+        sig1(1);
+        EXPECT_CALL(observer, set_value(2));
+        sig2(2);
+
+        con1.disconnect();
+        EXPECT_CALL(observer, set_value(3)).Times(0);
+        sig2(3);
+    }
+
+    {
+        // move sig1 into sig2 after disconnect
+        // sig2 should be dirty
+        Observer observer;
+        FastSignal<void(int)> sig1;
+
+        auto con1 = sig1.add<&Observer::set_value>(&observer);
+        con1.disconnect();
+
+        FastSignal<void(int)> sig2;
+        sig2 = std::move(sig1);
+
+        EXPECT_EQ(sig1.count(), 0);
+        EXPECT_EQ(sig2.count(), 0);
+
+        EXPECT_EQ(sig1.actual_count(), 0);
         EXPECT_EQ(sig2.actual_count(), 1);
 
         EXPECT_CALL(observer, set_value(1)).Times(0);

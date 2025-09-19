@@ -92,14 +92,29 @@ public:
     }
 
     FastSignalBase(FastSignalBase &&other) noexcept :
-        callbacks(std::move(other.callbacks)), callback_count(other.callback_count) {
+        callbacks(std::move(other.callbacks)), callback_count(other.callback_count),
+            is_dirty(other.is_dirty) {
         other.callback_count = 0;
+
+        for (auto &cb : callbacks) {
+            if (!cb.conn)
+                continue;
+            cb.conn->set_sig(this);
+        }
     }
 
     FastSignalBase& operator=(FastSignalBase &&other) noexcept {
         callbacks = std::move(other.callbacks);
         callback_count = other.callback_count;
+        is_dirty = other.is_dirty;
         other.callback_count = 0;
+
+        for (auto &cb : callbacks) {
+            if (!cb.conn)
+                continue;
+            cb.conn->set_sig(this);
+        }
+
         return *this;
     }
 

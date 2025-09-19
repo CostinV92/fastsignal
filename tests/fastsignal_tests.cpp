@@ -475,7 +475,7 @@ TEST_F(FastSignalTest, test_signal_copy)
 {
     {
         // sig2 is a copy of sig1
-        // sig2 should not be affected by the disconnect of con1
+        // sig2 should not have any connections
         Observer observer;
         FastSignal<void(int)> sig1;
 
@@ -483,21 +483,22 @@ TEST_F(FastSignalTest, test_signal_copy)
         FastSignal<void(int)> sig2(sig1);
 
         EXPECT_EQ(sig1.count(), 1);
-        EXPECT_EQ(sig2.count(), 1);
+        EXPECT_EQ(sig2.count(), 0);
 
         EXPECT_CALL(observer, set_value(1));
         sig1(1);
-        EXPECT_CALL(observer, set_value(2));
+        EXPECT_CALL(observer, set_value(2)).Times(0);
         sig2(2);
 
         con1.disconnect();
-        EXPECT_CALL(observer, set_value(3));
+        EXPECT_CALL(observer, set_value(3)).Times(0);
+        sig1(3);
         sig2(3);
     }
 
     {
         // sig2 is a copy of sig1 after disconnect
-        // sig2 should be dirty
+        // sig2 should not be dirty
         Observer observer;
         FastSignal<void(int)> sig1;
 
@@ -510,7 +511,7 @@ TEST_F(FastSignalTest, test_signal_copy)
         EXPECT_EQ(sig2.count(), 0);
 
         EXPECT_EQ(sig1.actual_count(), 1);
-        EXPECT_EQ(sig2.actual_count(), 1);
+        EXPECT_EQ(sig2.actual_count(), 0);
 
         EXPECT_CALL(observer, set_value(1)).Times(0);
         sig1(1);
@@ -527,7 +528,7 @@ TEST_F(FastSignalTest, test_signal_copy)
     // Same tests, but with assignment
     {
         // sig2 is a copy of sig1
-        // sig2 should not be affected by the disconnect of con1
+        // sig2 should not have any connections
         Observer observer;
         FastSignal<void(int)> sig1;
 
@@ -536,21 +537,22 @@ TEST_F(FastSignalTest, test_signal_copy)
         sig2 = sig1;
 
         EXPECT_EQ(sig1.count(), 1);
-        EXPECT_EQ(sig2.count(), 1);
+        EXPECT_EQ(sig2.count(), 0);
 
         EXPECT_CALL(observer, set_value(1));
         sig1(1);
-        EXPECT_CALL(observer, set_value(2));
+        EXPECT_CALL(observer, set_value(2)).Times(0);
         sig2(2);
 
         con1.disconnect();
-        EXPECT_CALL(observer, set_value(3));
+        EXPECT_CALL(observer, set_value(3)).Times(0);
+        sig1(3);
         sig2(3);
     }
 
     {
         // sig2 is a copy of sig1 after disconnect
-        // sig2 should be dirty
+        // sig2 should not be dirty
         Observer observer;
         FastSignal<void(int)> sig1;
 
@@ -564,7 +566,7 @@ TEST_F(FastSignalTest, test_signal_copy)
         EXPECT_EQ(sig2.count(), 0);
 
         EXPECT_EQ(sig1.actual_count(), 1);
-        EXPECT_EQ(sig2.actual_count(), 1);
+        EXPECT_EQ(sig2.actual_count(), 0);
 
         EXPECT_CALL(observer, set_value(1)).Times(0);
         sig1(1);
@@ -725,7 +727,7 @@ TEST_F(FastSignalTest, test_signal_const_obj)
     EXPECT_CALL(observer, set_value(1));
     sig(1);
 
-    const FastSignal<void(int)> sig2(sig);
+    const FastSignal<void(int)> sig2(std::move(sig));
     EXPECT_CALL(observer, set_value(2));
     sig2(2);
 }
@@ -739,11 +741,11 @@ TEST_F(FastSignalTest, test_signal_copy_disconnectable)
         sig2 = sig1;
 
         EXPECT_EQ(sig1.count(), 1);
-        EXPECT_EQ(sig2.count(), 1);
+        EXPECT_EQ(sig2.count(), 0);
 
         EXPECT_CALL(observer, set_value(1));
         sig1(1);
-        EXPECT_CALL(observer, set_value(2));
+        EXPECT_CALL(observer, set_value(2)).Times(0);
         sig2(2);
     }
 

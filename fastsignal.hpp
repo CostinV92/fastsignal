@@ -117,34 +117,8 @@ protected:
 public:
     FastSignalBase() = default;
 
-    FastSignalBase(const FastSignalBase &other) : callbacks(other.callbacks),
-        callback_count(other.callback_count), is_dirty(other.is_dirty) {
-        for (auto &cb : callbacks) {
-            if (!cb.conn)
-                continue;
-
-            cb.conn = new internal::Connection(this, cb.conn->index, other.callbacks[cb.conn->index].conn->is_disconnectable);
-            if (other.callbacks[cb.conn->index].conn->is_disconnectable)
-                reinterpret_cast<Disconnectable*>(cb.obj)->add_connection(cb.conn);
-        }
-    }
-
-    FastSignalBase& operator=(const FastSignalBase &other) {
-        callbacks = other.callbacks;
-        callback_count = other.callback_count;
-        is_dirty = other.is_dirty;
-
-        for (auto &cb : callbacks) {
-            if (!cb.conn)
-                continue;
-
-            cb.conn = new internal::Connection(this, cb.conn->index, other.callbacks[cb.conn->index].conn->is_disconnectable);
-            if (other.callbacks[cb.conn->index].conn->is_disconnectable)
-                reinterpret_cast<Disconnectable*>(cb.obj)->add_connection(cb.conn);
-        }
-
-        return *this;
-    }
+    FastSignalBase(const FastSignalBase&) {}
+    FastSignalBase& operator=(const FastSignalBase&) { return *this; }
 
     FastSignalBase(FastSignalBase &&other) noexcept :
         callbacks(std::move(other.callbacks)), callback_count(other.callback_count),

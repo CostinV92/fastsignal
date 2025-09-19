@@ -23,7 +23,6 @@ struct Callback
     void *obj = nullptr;
     void *fun = nullptr;
     Connection *conn = nullptr;
-    bool is_disconnectable = false;
 };
 
 struct Connection
@@ -31,9 +30,10 @@ struct Connection
     FastSignalBase *sig = nullptr;
     int index = -1;
     int ref_count = 1;
+    bool is_disconnectable = false;
 
-    Connection(FastSignalBase *sig, int index) :
-        sig(sig), index(index) {}
+    Connection(FastSignalBase *sig, int index, bool is_disconnectable) :
+        sig(sig), index(index), is_disconnectable(is_disconnectable) {}
 
     Connection(const Connection &other) = delete;
     Connection &operator=(const Connection &other) = delete;
@@ -105,8 +105,8 @@ public:
             if (!cb.conn)
                 continue;
 
-            cb.conn = new internal::Connection(this, cb.conn->index);
-            if (cb.is_disconnectable)
+            cb.conn = new internal::Connection(this, cb.conn->index, other.callbacks[cb.conn->index].conn->is_disconnectable);
+            if (other.callbacks[cb.conn->index].conn->is_disconnectable)
                 reinterpret_cast<Disconnectable*>(cb.obj)->add_connection(cb.conn);
         }
     }
@@ -120,8 +120,8 @@ public:
             if (!cb.conn)
                 continue;
 
-            cb.conn = new internal::Connection(this, cb.conn->index);
-            if (cb.is_disconnectable)
+            cb.conn = new internal::Connection(this, cb.conn->index, other.callbacks[cb.conn->index].conn->is_disconnectable);
+            if (other.callbacks[cb.conn->index].conn->is_disconnectable)
                 reinterpret_cast<Disconnectable*>(cb.obj)->add_connection(cb.conn);
         }
 
@@ -184,7 +184,6 @@ inline void Connection::disconnect()
         return;
 
     sig->dirty(index);
-    index = -1;
     sig = nullptr;
 }
 
@@ -251,11 +250,11 @@ public:
 
         constexpr bool is_disconnectable = std::is_base_of_v<Disconnectable, ObjType>;
 
-        internal::Connection *conn = new internal::Connection(this, callbacks.size());
+        internal::Connection *conn = new internal::Connection(this, callbacks.size(), is_disconnectable);
         callbacks.push_back({reinterpret_cast<void*>(obj),
             reinterpret_cast<void*>(+[](void *obj, const ArgTypes&... args) -> RetType {
                 (reinterpret_cast<ObjType*>(obj)->*fun)(args...);
-            }), conn, is_disconnectable});
+            }), conn});
         ++callback_count;
 
         if constexpr (is_disconnectable)
@@ -265,8 +264,8 @@ public:
     }
 
     ConnectionView add(RetType(fun)(ArgTypes...)) {
-        internal::Connection *conn = new internal::Connection(this, callbacks.size());
-        callbacks.push_back({nullptr, reinterpret_cast<void*>(fun), conn, false});
+        internal::Connection *conn = new internal::Connection(this, callbacks.size(), false);
+        callbacks.push_back({nullptr, reinterpret_cast<void*>(fun), conn});
         ++callback_count;
         return ConnectionView(conn);
     }

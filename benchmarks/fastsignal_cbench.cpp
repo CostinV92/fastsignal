@@ -10,7 +10,7 @@ void bench_call(Subject& subject)
     bench.iteration(ITERATIONS);
 
     bench.run("observer", [&]() {
-    for (auto& observer : observers)
+        for (auto& observer : observers)
             observer->handler1_v();
     });
 

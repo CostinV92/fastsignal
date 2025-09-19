@@ -20,8 +20,6 @@ ComplexParam complex_param{0, "ComplexParam"};
 
 struct Subject;
 
-volatile uint64_t sink = 0;
-
 struct ObserverI
 {
     virtual void handler1_v() = 0;
@@ -75,6 +73,8 @@ struct Subject
 template<size_t I>
 struct Observer : public ObserverI
 {
+    volatile double sink = 0;
+
     void handler1() { sink++; }
     void handler1_v() override { sink++; }
 

@@ -57,11 +57,32 @@ signal(2);  // No output
 
 ### Automatic Disconnection
 
-For automatic cleanup when objects are destroyed, inherit from `Disconnectable`:
+For automatic cleanup when objects are destroyed, inherit from `Disconnectable`.
+
+When copied, the copied to Disconnectable object will not have any connections to a signal, even if the copied from object had.
+
+When moved, the moved to Disconnectable object will steal the moved from object's connections. The moved from object will not have any connections.
 
 ```cpp
 class MyObserver : public fastsignal::Disconnectable {
 public:
+    void handle_event(int value) {
+        std::cout << "Observer: " << value << std::endl;
+    }
+};
+
+// If your object has to implement its own copy or move contructor/operator=,
+//      call fastsignal::Disconnectable copy and move constructors/operator=
+class MySpecialObserver : public fastsignal::Disconnectable {
+public:
+    MySpecialObserver() = default;
+
+    MySpecialObserver(const MySpecialObserver &other) : fastsignal::Disconnectable(other) { /* ... */ }
+    MySpecialObserver& operator=(const MySpecialObserver &other) { fastsignal::Disconnectable::operator=(other); /* ... */ }
+
+    MySpecialObserver(MySpecialObserver &&other) : fastsignal::Disconnectable(std::move(other)) { /* ... */ }
+    MySpecialObserver& operator=(MySpecialObserver &&other) { fastsignal::Disconnectable::operator=(std::move(other)); /* ... */ }
+
     void handle_event(int value) {
         std::cout << "Observer: " << value << std::endl;
     }

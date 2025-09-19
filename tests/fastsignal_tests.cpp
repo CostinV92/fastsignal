@@ -777,3 +777,96 @@ TEST_F(FastSignalTest, test_signal_move_disconnectable)
     sig1(3);
     sig2(4);
 }
+
+TEST_F(FastSignalTest, test_disconnectable_copy_move)
+{
+    // Anon struct because mocks are not copyable
+    struct AnonDisconnectable : public Disconnectable {
+        uint32_t value = 0;
+        void set_value(int x) { value = x; }
+    };
+
+    {
+        FastSignal<void(int)> sig;
+        {
+            AnonDisconnectable observer1;
+            sig.add<&AnonDisconnectable::set_value>(&observer1);
+
+            // The connection shouldn't be copied
+            AnonDisconnectable observer2(observer1);
+
+            EXPECT_EQ(sig.count(), 1);
+
+            sig(1);
+            EXPECT_EQ(observer1.value, 1);
+            EXPECT_EQ(observer2.value, 0);
+        }
+
+        EXPECT_EQ(sig.count(), 0);
+
+        sig(3);
+    }
+
+    {
+        FastSignal<void(int)> sig;
+        {
+            AnonDisconnectable observer1;
+            sig.add<&AnonDisconnectable::set_value>(&observer1);
+
+            // The connection shouldn't be copied
+            AnonDisconnectable observer2;
+            observer2 = observer1;
+
+            EXPECT_EQ(sig.count(), 1);
+
+            sig(1);
+            EXPECT_EQ(observer1.value, 1);
+            EXPECT_EQ(observer2.value, 0);
+        }
+
+        EXPECT_EQ(sig.count(), 0);
+
+        sig(3);
+    }
+
+    {
+        FastSignal<void(int)> sig;
+        {
+            AnonDisconnectable observer1;
+            sig.add<&AnonDisconnectable::set_value>(&observer1);
+
+            AnonDisconnectable observer2(std::move(observer1));
+
+            EXPECT_EQ(sig.count(), 1);
+
+            sig(1);
+            EXPECT_EQ(observer1.value, 0);
+            EXPECT_EQ(observer2.value, 1);
+        }
+
+        EXPECT_EQ(sig.count(), 0);
+
+        sig(3);
+    }
+
+    {
+        FastSignal<void(int)> sig;
+        {
+            AnonDisconnectable observer1;
+            sig.add<&AnonDisconnectable::set_value>(&observer1);
+
+            AnonDisconnectable observer2;
+            observer2 = std::move(observer1);
+
+            EXPECT_EQ(sig.count(), 1);
+
+            sig(1);
+            EXPECT_EQ(observer1.value, 0);
+            EXPECT_EQ(observer2.value, 1);
+        }
+
+        EXPECT_EQ(sig.count(), 0);
+
+        sig(3);
+    }
+}

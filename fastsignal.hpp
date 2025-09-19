@@ -59,6 +59,7 @@ struct Connection
     }
 
     inline void disconnect();
+    inline void update_sig_obj(Disconnectable *obj);
 };
 
 } // namespace internal
@@ -77,6 +78,23 @@ class Disconnectable
     }
 
 public:
+
+    Disconnectable() = default;
+
+    Disconnectable(const Disconnectable&) {};
+    Disconnectable& operator=(const Disconnectable&) { return *this; };
+
+    Disconnectable(Disconnectable &&other) : connections(std::move(other.connections)) {
+        for (auto &conn : connections)
+            conn->update_sig_obj(this);
+    };
+    Disconnectable& operator=(Disconnectable &&other) {
+        connections = std::move(other.connections);
+        for (auto &conn : connections)
+            conn->update_sig_obj(this);
+        return *this;
+    };
+
     virtual ~Disconnectable() {
         for (auto &conn : connections) {
             conn->disconnect();
@@ -165,6 +183,10 @@ public:
         }
     }
 
+    void update_sig_obj(int index, Disconnectable *obj) {
+        callbacks[index].obj = obj;
+    }
+
     void dirty(int index) {
         is_dirty = true;
         --callback_count;
@@ -185,6 +207,12 @@ inline void Connection::disconnect()
 
     sig->dirty(index);
     sig = nullptr;
+}
+
+inline void Connection::update_sig_obj(Disconnectable *obj) {
+    if (!sig)
+        return;
+    sig->update_sig_obj(index, obj);
 }
 
 } // namespace internal

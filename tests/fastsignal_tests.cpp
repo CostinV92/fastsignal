@@ -729,3 +729,51 @@ TEST_F(FastSignalTest, test_signal_const_obj)
     EXPECT_CALL(observer, set_value(2));
     sig2(2);
 }
+
+TEST_F(FastSignalTest, test_signal_copy_disconnectable)
+{
+    FastSignal<void(int)> sig1, sig2;
+    {
+        DisconnectableObserver observer;
+        sig1.add<&DisconnectableObserver::set_value>(&observer);
+        sig2 = sig1;
+
+        EXPECT_EQ(sig1.count(), 1);
+        EXPECT_EQ(sig2.count(), 1);
+
+        EXPECT_CALL(observer, set_value(1));
+        sig1(1);
+        EXPECT_CALL(observer, set_value(2));
+        sig2(2);
+    }
+
+    EXPECT_EQ(sig1.count(), 0);
+    EXPECT_EQ(sig2.count(), 0);
+
+    sig1(3);
+    sig2(4);
+}
+
+TEST_F(FastSignalTest, test_signal_move_disconnectable)
+{
+    FastSignal<void(int)> sig1, sig2;
+    {
+        DisconnectableObserver observer;
+        sig1.add<&DisconnectableObserver::set_value>(&observer);
+        sig2 = std::move(sig1);
+
+        EXPECT_EQ(sig1.count(), 0);
+        EXPECT_EQ(sig2.count(), 1);
+
+        EXPECT_CALL(observer, set_value(1)).Times(0);
+        sig1(1);
+        EXPECT_CALL(observer, set_value(2));
+        sig2(2);
+    }
+
+    EXPECT_EQ(sig1.count(), 0);
+    EXPECT_EQ(sig2.count(), 0);
+
+    sig1(3);
+    sig2(4);
+}

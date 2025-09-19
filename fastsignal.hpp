@@ -11,6 +11,7 @@ namespace internal {
     class FastSignalBase;
 } // namespace internal
 
+class Disconnectable;
 class ConnectionView;
 template<typename Signature>
 class FastSignal;
@@ -22,6 +23,7 @@ struct Callback
     void *obj = nullptr;
     void *fun = nullptr;
     Connection *conn = nullptr;
+    bool is_disconnectable = false;
 };
 
 struct Connection
@@ -59,6 +61,33 @@ struct Connection
     inline void disconnect();
 };
 
+} // namespace internal
+
+class Disconnectable
+{
+    std::vector<internal::Connection*> connections;
+
+    template<typename Signature>
+    friend class FastSignal;
+    friend class internal::FastSignalBase;
+
+    void add_connection(internal::Connection *conn) {
+        connections.emplace_back(conn);
+        internal::Connection::inc(conn);
+    }
+
+public:
+    virtual ~Disconnectable() {
+        for (auto &conn : connections) {
+            conn->disconnect();
+            internal::Connection::dec(conn);
+            conn = nullptr;
+        }
+    }
+};
+
+namespace internal {
+
 class FastSignalBase
 {
 protected:
@@ -75,19 +104,27 @@ public:
         for (auto &cb : callbacks) {
             if (!cb.conn)
                 continue;
+
             cb.conn = new internal::Connection(this, cb.conn->index);
+            if (cb.is_disconnectable)
+                reinterpret_cast<Disconnectable*>(cb.obj)->add_connection(cb.conn);
         }
-    };
+    }
 
     FastSignalBase& operator=(const FastSignalBase &other) {
         callbacks = other.callbacks;
         callback_count = other.callback_count;
         is_dirty = other.is_dirty;
+
         for (auto &cb : callbacks) {
             if (!cb.conn)
                 continue;
+
             cb.conn = new internal::Connection(this, cb.conn->index);
+            if (cb.is_disconnectable)
+                reinterpret_cast<Disconnectable*>(cb.obj)->add_connection(cb.conn);
         }
+
         return *this;
     }
 
@@ -153,27 +190,6 @@ inline void Connection::disconnect()
 
 } // namespace internal
 
-class Disconnectable
-{
-    std::vector<internal::Connection*> connections;
-
-    template<typename Signature>
-    friend class FastSignal;
-    void add_connection(internal::Connection *conn) {
-        connections.emplace_back(conn);
-        internal::Connection::inc(conn);
-    }
-
-public:
-    virtual ~Disconnectable() {
-        for (auto &conn : connections) {
-            conn->disconnect();
-            internal::Connection::dec(conn);
-            conn = nullptr;
-        }
-    }
-};
-
 class ConnectionView
 {
     internal::Connection *connection;
@@ -233,26 +249,26 @@ public:
         static_assert(std::is_same_v<std::invoke_result_t<FunType, ObjType*, ArgTypes...>, RetType>,
             "Callback must return the signal's declared return type");
 
+        constexpr bool is_disconnectable = std::is_base_of_v<Disconnectable, ObjType>;
+
+        internal::Connection *conn = new internal::Connection(this, callbacks.size());
         callbacks.push_back({reinterpret_cast<void*>(obj),
             reinterpret_cast<void*>(+[](void *obj, const ArgTypes&... args) -> RetType {
                 (reinterpret_cast<ObjType*>(obj)->*fun)(args...);
-            })});
-
+            }), conn, is_disconnectable});
         ++callback_count;
-        internal::Connection *conn = new internal::Connection(this, callbacks.size() - 1);
-        callbacks.back().conn = conn;
-        if constexpr (std::is_base_of_v<Disconnectable, ObjType>)
+
+        if constexpr (is_disconnectable)
             obj->add_connection(conn);
 
         return ConnectionView(conn);
     }
 
     ConnectionView add(RetType(fun)(ArgTypes...)) {
-        callbacks.push_back({nullptr, reinterpret_cast<void*>(fun)});
-
+        internal::Connection *conn = new internal::Connection(this, callbacks.size());
+        callbacks.push_back({nullptr, reinterpret_cast<void*>(fun), conn, false});
         ++callback_count;
-        callbacks.back().conn = new internal::Connection(this, callbacks.size() - 1);
-        return ConnectionView(callbacks.back().conn);
+        return ConnectionView(conn);
     }
 
     // TODO(victor);

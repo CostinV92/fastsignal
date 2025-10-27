@@ -22,7 +22,7 @@ struct Callback
 {
     void *obj = nullptr;
     void *fun = nullptr;
-    Connection *conn = nullptr;
+    std::shared_ptr<Connection> conn = nullptr;
 };
 
 struct Connection
@@ -42,20 +42,6 @@ struct Connection
 
     void set_sig(FastSignalBase *sig) {
         this->sig = sig;
-    }
-
-    static void inc(Connection *conn) {
-        if (!conn)
-            return;
-        ++conn->ref_count;
-    }
-
-    static void dec(Connection *conn) {
-        if (!conn)
-            return;
-        --conn->ref_count;
-        if (conn->ref_count == 0)
-            delete conn;
     }
 
     inline void disconnect();
@@ -108,7 +94,6 @@ public:
             if (!cb.conn)
                 continue;
             cb.conn->set_sig(nullptr);
-            Connection::dec(cb.conn);
             cb.conn = nullptr;
         }
     }
@@ -149,15 +134,14 @@ inline void Connection::update_sig_obj(Disconnectable *obj) {
 
 class Disconnectable
 {
-    std::vector<internal::Connection*> connections;
+    std::vector<std::weak_ptr<internal::Connection>> connections;
 
     template<typename Signature>
     friend class FastSignal;
     friend class internal::FastSignalBase;
 
-    void add_connection(internal::Connection *conn) {
+    void add_connection(std::shared_ptr<internal::Connection> conn) {
         connections.emplace_back(conn);
-        internal::Connection::inc(conn);
     }
 
 public:
@@ -168,67 +152,72 @@ public:
     Disconnectable& operator=(const Disconnectable&) { return *this; };
 
     Disconnectable(Disconnectable &&other) : connections(std::move(other.connections)) {
-        for (auto &conn : connections)
-            conn->update_sig_obj(this);
+        for (auto &conn : connections) {
+            std::shared_ptr<internal::Connection> sp = conn.lock();
+            if (!sp)
+                continue;
+            sp->update_sig_obj(this);
+        }
     };
     Disconnectable& operator=(Disconnectable &&other) {
         connections = std::move(other.connections);
-        for (auto &conn : connections)
-            conn->update_sig_obj(this);
+        for (auto &conn : connections) {
+            std::shared_ptr<internal::Connection> sp = conn.lock();
+            if (!sp)
+                continue;
+            sp->update_sig_obj(this);
+        }
         return *this;
     };
 
     virtual ~Disconnectable() {
         for (auto &conn : connections) {
-            conn->disconnect();
-            internal::Connection::dec(conn);
-            conn = nullptr;
+            std::shared_ptr<internal::Connection> sp = conn.lock();
+            if (!sp)
+                continue;
+            sp->disconnect();
+            conn.reset();
         }
     }
 };
 
 class ConnectionView
 {
-    internal::Connection *connection;
+    std::weak_ptr<internal::Connection> connection;
 
 public:
-    ConnectionView(internal::Connection *connection = nullptr) : connection(connection) {
-        internal::Connection::inc(connection);
-    }
+    ConnectionView(std::shared_ptr<internal::Connection> connection = nullptr) : connection(connection) {}
 
     ~ConnectionView() {
-        internal::Connection::dec(connection);
-        connection = nullptr;
+        connection.reset();
     }
 
     ConnectionView(const ConnectionView &other) {
         connection = other.connection;
-        internal::Connection::inc(connection);
     }
 
     ConnectionView& operator=(const ConnectionView &other) {
         connection = other.connection;
-        internal::Connection::inc(connection);
         return *this;
     }
 
     ConnectionView(ConnectionView &&other) : connection(other.connection) {
-        other.connection = nullptr;
+        other.connection.reset();
     }
 
     ConnectionView& operator=(ConnectionView &&other) {
         connection = other.connection;
-        other.connection = nullptr;
+        other.connection.reset();
         return *this;
     }
 
     void disconnect() {
-        if (!connection)
+        std::shared_ptr<internal::Connection> conn = connection.lock();
+        if (!conn)
             return;
 
-        connection->disconnect();
-        internal::Connection::dec(connection);
-        connection = nullptr;
+        conn->disconnect();
+        connection.reset();
     }
 };
 
@@ -248,7 +237,7 @@ public:
 
         constexpr bool is_disconnectable = std::is_base_of_v<Disconnectable, ObjType>;
 
-        internal::Connection *conn = new internal::Connection(this, callbacks.size(), is_disconnectable);
+        std::shared_ptr<internal::Connection> conn = std::make_shared<internal::Connection>(this, callbacks.size(), is_disconnectable);
         callbacks.push_back({reinterpret_cast<void*>(obj),
             reinterpret_cast<void*>(+[](void *obj, const ArgTypes&... args) -> RetType {
                 (reinterpret_cast<ObjType*>(obj)->*fun)(args...);
@@ -262,7 +251,7 @@ public:
     }
 
     ConnectionView add(RetType(fun)(ArgTypes...)) {
-        internal::Connection *conn = new internal::Connection(this, callbacks.size(), false);
+        std::shared_ptr<internal::Connection> conn = std::make_shared<internal::Connection>(this, callbacks.size(), false);
         callbacks.push_back({nullptr, reinterpret_cast<void*>(fun), conn});
         ++callback_count;
         return ConnectionView(conn);
@@ -293,7 +282,6 @@ public:
         for (size_t i = 0; i < callbacks.size(); i++) {
             if (callbacks[i].fun == nullptr) {
                 callbacks[i].conn->set_sig(nullptr);
-                internal::Connection::dec(callbacks[i].conn);
                 callbacks[i].conn = nullptr;
             } else {
                 callbacks[size] = callbacks[i];
